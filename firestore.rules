@@ -1,0 +1,279 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /*
+      الدوال المساعدة
+    */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasUserProfile() {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        );
+    }
+
+    function currentRole() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data.role;
+    }
+
+    function hasRole(allowedRoles) {
+      return hasUserProfile()
+        && currentRole() in allowedRoles;
+    }
+
+    function isOwner() {
+      return hasRole(["owner"]);
+    }
+
+    function isLeader() {
+      return hasRole([
+        "owner",
+        "leader"
+      ]);
+    }
+
+    function isSupervisor() {
+      return hasRole([
+        "supervisor"
+      ]);
+    }
+
+    function isStaff() {
+      return hasRole([
+        "owner",
+        "leader",
+        "supervisor"
+      ]);
+    }
+
+    /*
+      حسابات المستخدمين
+    */
+
+    match /users/{userId} {
+      allow read: if isOwner()
+        || isLeader()
+        || (
+          signedIn()
+          && request.auth.uid == userId
+        );
+
+      allow create: if isOwner();
+      allow update: if isOwner();
+      allow delete: if isOwner();
+    }
+
+    /*
+      الموظفون
+    */
+
+    match /employees/{employeeId} {
+      allow read: if isStaff();
+
+      allow create, update, delete: if isStaff();
+    }
+
+    /*
+      مواقع الخريطة القديمة
+    */
+
+    match /mapLocations/{locationId} {
+      allow read: if signedIn();
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      مناطق الخريطة الجديدة
+    */
+
+    match /mapRegions/{regionId} {
+      allow read: if true;
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      سجل النشاط
+    */
+
+    match /activity/{activityId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+
+    match /activities/{activityId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+
+    /*
+      إعدادات الموقع
+    */
+
+    match /settings/{settingId} {
+      allow read: if true;
+
+      allow create, update: if isLeader();
+      allow delete: if isOwner();
+    }
+
+    /*
+      الإعلانات العامة
+    */
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      جدول الدورات القديم
+    */
+
+    match /courseSchedule/{courseId} {
+      allow read: if true;
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      جلسات الدورات الجديدة
+
+      الصفحة العامة تحصل عليها عن طريق API.
+      الإدارة المباشرة للقيادة فقط.
+    */
+
+    match /courseSessions/{courseId} {
+      allow read: if isStaff();
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      تسجيلات الموظفين في الدورات
+
+      إنشاء التسجيل يتم من خلال
+      Firebase Admin داخل API.
+
+      القيادة تستطيع عرض المسجلين
+      وتعديل حالة الحضور.
+    */
+
+    match /courseRegistrations/{registrationId} {
+      allow read: if isLeader();
+
+      allow create: if false;
+
+      allow update, delete: if isLeader();
+    }
+
+    /*
+      إشعارات الدورات للقيادة
+    */
+
+    match /notifications/{notificationId} {
+      allow read: if isLeader();
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      قوانين القطاع
+    */
+
+    match /sectorRules/{ruleId} {
+      allow read: if true;
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      المخالفات والغرامات
+    */
+
+    match /sectorViolations/{violationId} {
+      allow read: if true;
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      تقويم القطاع
+    */
+
+    match /sectorEvents/{eventId} {
+      allow read: if true;
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      الترقيات
+    */
+
+    match /promotions/{promotionId} {
+      allow read: if isStaff();
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      الدورات الداخلية
+    */
+
+    match /courses/{courseId} {
+      allow read: if isStaff();
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      اللاعبون المعتمدون
+    */
+
+    match /certified/{certifiedId} {
+      allow read: if isStaff();
+
+      allow create, update, delete: if isLeader();
+    }
+
+    /*
+      النسخ الاحتياطية
+    */
+
+    match /backups/{backupId} {
+      allow read: if isOwner();
+      allow create: if isOwner();
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+
+    /*
+      منع أي Collection غير معروف
+    */
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

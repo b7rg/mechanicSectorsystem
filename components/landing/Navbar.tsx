@@ -1,0 +1,161 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { Menu, Wrench, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+
+const links = [
+  {
+    title: "الرئيسية",
+    href: "/",
+  },
+  {
+    title: "عن القطاع",
+    href: "/#about",
+  },
+  {
+    title: "الدورات",
+    href: "/courses",
+  },
+  {
+    title: "الإعلانات",
+    href: "/announcements",
+  },
+  {
+    title: "القوانين",
+    href: "/rules",
+  },
+  {
+    title: "المخالفات",
+    href: "/violations",
+  },
+  {
+    title: "التقويم",
+    href: "/calendar",
+  },
+];
+
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <motion.header
+      initial={{ y: -80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{
+        duration: 0.6,
+        ease: "easeOut",
+      }}
+      className="fixed inset-x-0 top-0 z-50"
+    >
+      <div className="relative mx-auto mt-6 w-[94%] max-w-[1400px]">
+        <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/60 px-5 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl md:px-7">
+          <Link
+            href="/"
+            onClick={() => setMenuOpen(false)}
+            className="flex shrink-0 items-center gap-3"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-500 text-black shadow-lg shadow-yellow-500/20">
+              <Wrench size={22} />
+            </div>
+
+            <div className="hidden sm:block">
+              <h1 className="logo text-2xl text-yellow-400">
+                MSS
+              </h1>
+
+              <p className="text-xs text-zinc-400">
+                Mechanic Sector System
+              </p>
+            </div>
+          </Link>
+
+          <nav className="hidden items-center gap-5 xl:flex">
+            {links.map((item) => (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="whitespace-nowrap text-sm font-medium text-zinc-300 transition hover:text-yellow-400"
+              >
+                {item.title}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden rounded-full bg-yellow-500 px-6 py-3 font-semibold text-black transition hover:scale-105 hover:bg-yellow-400 sm:block"
+            >
+              دخول النظام
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen((current) => !current)}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-yellow-500/30 hover:text-yellow-400 xl:hidden"
+              aria-label={
+                menuOpen ? "إغلاق القائمة" : "فتح القائمة"
+              }
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? (
+                <X size={22} />
+              ) : (
+                <Menu size={22} />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: -15,
+                scale: 0.98,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: -15,
+                scale: 0.98,
+              }}
+              transition={{
+                duration: 0.2,
+              }}
+              className="absolute left-0 right-0 top-[76px] overflow-hidden rounded-3xl border border-white/10 bg-black/95 p-4 shadow-2xl backdrop-blur-2xl xl:hidden"
+            >
+              <nav className="grid gap-2 sm:grid-cols-2">
+                {links.map((item) => (
+                  <Link
+                    key={item.title}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-2xl border border-transparent px-5 py-4 font-bold text-zinc-300 transition hover:border-yellow-500/20 hover:bg-yellow-500/10 hover:text-yellow-400"
+                  >
+                    {item.title}
+                  </Link>
+                ))}
+              </nav>
+
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="mt-3 flex w-full items-center justify-center rounded-2xl bg-yellow-500 px-6 py-4 font-black text-black transition hover:bg-yellow-400 sm:hidden"
+              >
+                دخول النظام
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.header>
+  );
+}
