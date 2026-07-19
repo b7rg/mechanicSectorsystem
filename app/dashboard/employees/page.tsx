@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   useEffect,
   useMemo,
@@ -574,7 +576,7 @@ export default function EmployeesPage() {
                   {editingId ? "تعديل الموظف" : "إضافة موظف جديد"}
                 </h2>
                 <p className="mt-2 text-sm text-zinc-500">
-                  اختاري النوع والمستوى، وسيظهر لك فقط الكود المتاح.
+                  اختار النوع والمستوى، وسيظهر لك فقط الكود المتاح.
                 </p>
               </div>
 
@@ -930,21 +932,30 @@ export default function EmployeesPage() {
                       </div>
                     )}
 
-                    <div className="mt-5 flex gap-3">
+                    <div className="mt-5 grid grid-cols-[1fr_1fr_auto] gap-3">
+                      <Link
+                        href={`/dashboard/employees/${employee.id}`}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 py-3 font-black text-blue-400 transition hover:bg-blue-500/20"
+                      >
+                        <Users size={17} />
+                        ملف الموظف
+                      </Link>
+
                       <button
                         type="button"
                         onClick={() => startEditEmployee(employee)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 py-3 font-black text-yellow-400"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 py-3 font-black text-yellow-400 transition hover:bg-yellow-500/20"
                       >
                         <Edit3 size={17} />
-                        تعديل
+                        تعديل البيانات
                       </button>
 
                       <button
                         type="button"
                         disabled={deletingId === employee.id}
                         onClick={() => removeEmployee(employee)}
-                        className="flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-red-400 disabled:opacity-50"
+                        className="flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 px-4 text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+                        aria-label={`حذف ${employee.name}`}
                       >
                         {deletingId === employee.id ? (
                           <Loader2 className="animate-spin" size={18} />
