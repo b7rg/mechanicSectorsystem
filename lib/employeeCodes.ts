@@ -101,19 +101,20 @@ export const CERTIFIED_LEVEL_RANGES: LevelRange[] = [
 
 /*
   قيادة المعتمد CA:
+  1-5 = مقعد واحد لكل مستوى
+  6 = 60
   7 = 50
   8 = 40
   9 = 30
   10 = 20
-  والمستويات 1-6 = مقعد واحد لكل مستوى
 */
 export const CERTIFIED_LEADER_LEVEL_RANGES: LevelRange[] = [
-  { level: 1, from: 146, to: 146, label: "المستوى الأول" },
-  { level: 2, from: 145, to: 145, label: "المستوى الثاني" },
-  { level: 3, from: 144, to: 144, label: "المستوى الثالث" },
-  { level: 4, from: 143, to: 143, label: "المستوى الرابع" },
-  { level: 5, from: 142, to: 142, label: "المستوى الخامس" },
-  { level: 6, from: 141, to: 141, label: "المستوى السادس" },
+  { level: 1, from: 205, to: 205, label: "المستوى الأول" },
+  { level: 2, from: 204, to: 204, label: "المستوى الثاني" },
+  { level: 3, from: 203, to: 203, label: "المستوى الثالث" },
+  { level: 4, from: 202, to: 202, label: "المستوى الرابع" },
+  { level: 5, from: 201, to: 201, label: "المستوى الخامس" },
+  { level: 6, from: 200, to: 141, label: "المستوى السادس" },
   { level: 7, from: 140, to: 91, label: "المستوى السابع" },
   { level: 8, from: 90, to: 51, label: "المستوى الثامن" },
   { level: 9, from: 50, to: 21, label: "المستوى التاسع" },
