@@ -2,10 +2,10 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
-export const runtime = "nodejs";
-import { FieldValue } from "firebase-admin/firestore";
 
 import { getAdminDb } from "@/lib/firebaseAdmin";
+
+export const runtime = "nodejs";
 
 type AccountRole =
   | "owner"
@@ -64,14 +64,13 @@ async function requireOwner(
     );
   }
 
-    const db = getAdminDb();
+  const db = getAdminDb();
 
-const { getAuth } = await import(
-  "firebase-admin/auth"
-);
+  const { getAuth } = await import(
+    "firebase-admin/auth"
+  );
 
-const adminAuth = getAuth();
-
+  const adminAuth = getAuth();
 
   let decodedToken;
 
@@ -327,6 +326,10 @@ export async function POST(
 
     await adminAuth.revokeRefreshTokens(
       uid
+    );
+
+    const { FieldValue } = await import(
+      "firebase-admin/firestore"
     );
 
     await db
