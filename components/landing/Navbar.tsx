@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Wrench, X } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  Menu,
+  Wrench,
+  X,
+} from "lucide-react";
+import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
 
 const links = [
   {
@@ -34,15 +41,26 @@ const links = [
     title: "التقويم",
     href: "/calendar",
   },
+  {
+    title: "الخريطة الميدانية",
+    href: "/map",
+  },
 ];
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] =
+    useState(false);
 
   return (
     <motion.header
-      initial={{ y: -80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
+      initial={{
+        y: -80,
+        opacity: 0,
+      }}
+      animate={{
+        y: 0,
+        opacity: 1,
+      }}
       transition={{
         duration: 0.6,
         ease: "easeOut",
@@ -53,7 +71,9 @@ export default function Navbar() {
         <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/60 px-5 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl md:px-7">
           <Link
             href="/"
-            onClick={() => setMenuOpen(false)}
+            onClick={() =>
+              setMenuOpen(false)
+            }
             className="flex shrink-0 items-center gap-3"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-500 text-black shadow-lg shadow-yellow-500/20">
@@ -93,10 +113,16 @@ export default function Navbar() {
 
             <button
               type="button"
-              onClick={() => setMenuOpen((current) => !current)}
+              onClick={() =>
+                setMenuOpen(
+                  (current) => !current
+                )
+              }
               className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-yellow-500/30 hover:text-yellow-400 xl:hidden"
               aria-label={
-                menuOpen ? "إغلاق القائمة" : "فتح القائمة"
+                menuOpen
+                  ? "إغلاق القائمة"
+                  : "فتح القائمة"
               }
               aria-expanded={menuOpen}
             >
@@ -137,7 +163,9 @@ export default function Navbar() {
                   <Link
                     key={item.title}
                     href={item.href}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() =>
+                      setMenuOpen(false)
+                    }
                     className="rounded-2xl border border-transparent px-5 py-4 font-bold text-zinc-300 transition hover:border-yellow-500/20 hover:bg-yellow-500/10 hover:text-yellow-400"
                   >
                     {item.title}
@@ -147,7 +175,9 @@ export default function Navbar() {
 
               <Link
                 href="/login"
-                onClick={() => setMenuOpen(false)}
+                onClick={() =>
+                  setMenuOpen(false)
+                }
                 className="mt-3 flex w-full items-center justify-center rounded-2xl bg-yellow-500 px-6 py-4 font-black text-black transition hover:bg-yellow-400 sm:hidden"
               >
                 دخول النظام
