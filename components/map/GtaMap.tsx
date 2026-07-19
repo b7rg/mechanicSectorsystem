@@ -576,7 +576,7 @@ export default function GtaMap({
               </h2>
 
               <p className="mt-1 text-sm text-zinc-500">
-                مرري الماوس فوق المنطقة
+                مرر الماوس فوق المنطقة
                 لعرض مسمياتها.
               </p>
             </div>
@@ -585,7 +585,7 @@ export default function GtaMap({
           <div className="flex items-center gap-2 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-4 py-2 text-sm font-bold text-yellow-400">
             <MousePointer2 size={17} />
 
-            على الجوال اضغطي على
+            على الجوال اضغط على
             المنطقة
           </div>
         </div>
@@ -723,7 +723,7 @@ export default function GtaMap({
                 />
 
                 <h3 className="mt-5 text-xl font-black text-white">
-                  اختاري منطقة من
+                  اختار منطقة من
                   الخريطة
                 </h3>
 

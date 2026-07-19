@@ -636,7 +636,7 @@ export default function ManageMapRegionsPage() {
     });
 
     setMessage(
-      "اضغطي على الخريطة لتحديد مكان المنطقة."
+      "اضغط على الخريطة لتحديد مكان المنطقة."
     );
 
     window.scrollTo({
@@ -675,7 +675,7 @@ export default function ManageMapRegionsPage() {
     });
 
     setMessage(
-      "عدلي الموقع أو الحجم ثم اضغطي حفظ."
+      "عدل الموقع أو الحجم ثم اضغط حفظ."
     );
 
     window.scrollTo({
@@ -728,7 +728,7 @@ export default function ManageMapRegionsPage() {
     );
 
     setMessage(
-    "تم تحديد مكان المنطقة. عدلي الحجم ثم احفظي."
+    "تم تحديد مكان المنطقة. عدل الحجم ثم احفظ "
     );
   }
 
@@ -738,7 +738,7 @@ export default function ManageMapRegionsPage() {
 
     if (!cleanName) {
       setErrorMessage(
-        "اكتبي اسم المنطقة."
+        "اكتب اسم المنطقة."
       );
 
       return;
@@ -889,7 +889,7 @@ export default function ManageMapRegionsPage() {
   ) {
     const confirmed =
       window.confirm(
-        `هل أنتِ متأكدة من حذف منطقة "${region.name}"؟`
+        `هل أنت متأكد من حذف منطقة "${region.name}"؟`
       );
 
     if (!confirmed) {
@@ -967,7 +967,7 @@ export default function ManageMapRegionsPage() {
               </h1>
 
               <p className="mt-2 text-zinc-400">
-                حددي مكان المنطقة وحجمها
+                حدد مكان المنطقة وحجمها
                 ولونها مباشرة فوق الخريطة.
               </p>
             </div>
@@ -1002,7 +1002,7 @@ export default function ManageMapRegionsPage() {
             <div className="flex items-center gap-2 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm font-bold text-yellow-400">
               <MousePointer2 size={18} />
 
-              اضغطي على أي مكان في الخريطة
+              اضغط على أي مكان في الخريطة
               لنقل المنطقة الحالية إليه.
             </div>
 
@@ -1139,7 +1139,7 @@ export default function ManageMapRegionsPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-zinc-500">
-                  عدلي البيانات وشوفي
+                  عدل البيانات وشوفي
                   المعاينة مباشرة.
                 </p>
               </div>
