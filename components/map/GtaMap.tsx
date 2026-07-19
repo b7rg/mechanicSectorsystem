@@ -41,6 +41,11 @@ type GtaMapProps = {
   publicMode?: boolean;
 };
 
+type MapPoint = {
+  x: number;
+  y: number;
+};
+
 type MapRegion = {
   id: string;
 
@@ -48,18 +53,12 @@ type MapRegion = {
   description: string;
   regionKey: MechanicRegionKey;
 
-  x: number;
-  y: number;
-
-  width: number;
-  height: number;
+  points: MapPoint[];
 
   color: string;
   opacity: number;
   hoverOpacity: number;
-
-  rotate: number;
-  borderRadius: number;
+  glow: number;
 
   showLabel: boolean;
   active: boolean;
@@ -83,24 +82,168 @@ function hexToRgba(
               character + character
           )
           .join("")
-      : cleaned;
+      : cleaned.padEnd(6, "0").slice(0, 6);
 
-  const red = Number.parseInt(
-    full.slice(0, 2),
-    16
-  );
+  const red =
+    Number.parseInt(full.slice(0, 2), 16) || 0;
 
-  const green = Number.parseInt(
-    full.slice(2, 4),
-    16
-  );
+  const green =
+    Number.parseInt(full.slice(2, 4), 16) || 0;
 
-  const blue = Number.parseInt(
-    full.slice(4, 6),
-    16
-  );
+  const blue =
+    Number.parseInt(full.slice(4, 6), 16) || 0;
 
   return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+}
+
+function clamp(
+  value: number,
+  min: number,
+  max: number
+) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function rectangleToPoints(
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): MapPoint[] {
+  const left = clamp(x, 0, 100);
+  const top = clamp(y, 0, 100);
+  const right = clamp(x + width, 0, 100);
+  const bottom = clamp(y + height, 0, 100);
+
+  return [
+    { x: left, y: top },
+    { x: right, y: top },
+    { x: right, y: bottom },
+    { x: left, y: bottom },
+  ];
+}
+
+function normalizePoints(
+  value: unknown
+): MapPoint[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (
+        !item ||
+        typeof item !== "object"
+      ) {
+        return null;
+      }
+
+      const point =
+        item as Record<string, unknown>;
+
+      const x = Number(point.x);
+      const y = Number(point.y);
+
+      if (
+        !Number.isFinite(x) ||
+        !Number.isFinite(y)
+      ) {
+        return null;
+      }
+
+      return {
+        x: clamp(x, 0, 100),
+        y: clamp(y, 0, 100),
+      };
+    })
+    .filter(
+      (point): point is MapPoint =>
+        point !== null
+    );
+}
+
+function pointsToSmoothPath(
+  points: MapPoint[]
+) {
+  if (points.length < 3) {
+    return "";
+  }
+
+  const tension = 0.82;
+  const total = points.length;
+
+  let path =
+    `M ${points[0].x} ${points[0].y}`;
+
+  for (
+    let index = 0;
+    index < total;
+    index += 1
+  ) {
+    const previous =
+      points[
+        (index - 1 + total) % total
+      ];
+
+    const current = points[index];
+
+    const next =
+      points[(index + 1) % total];
+
+    const following =
+      points[(index + 2) % total];
+
+    const controlOne = {
+      x:
+        current.x +
+        ((next.x - previous.x) / 6) *
+          tension,
+      y:
+        current.y +
+        ((next.y - previous.y) / 6) *
+          tension,
+    };
+
+    const controlTwo = {
+      x:
+        next.x -
+        ((following.x - current.x) / 6) *
+          tension,
+      y:
+        next.y -
+        ((following.y - current.y) / 6) *
+          tension,
+    };
+
+    path +=
+      ` C ${controlOne.x.toFixed(2)} ${controlOne.y.toFixed(2)}` +
+      ` ${controlTwo.x.toFixed(2)} ${controlTwo.y.toFixed(2)}` +
+      ` ${next.x.toFixed(2)} ${next.y.toFixed(2)}`;
+  }
+
+  return `${path} Z`;
+}
+
+function getRegionLabelPosition(
+  points: MapPoint[]
+) {
+  if (points.length === 0) {
+    return { x: 50, y: 50 };
+  }
+
+  const total = points.reduce(
+    (result, point) => ({
+      x: result.x + point.x,
+      y: result.y + point.y,
+    }),
+    { x: 0, y: 0 }
+  );
+
+  return {
+    x: total.x / points.length,
+    y: total.y / points.length,
+  };
 }
 
 function TitleBox({
@@ -435,6 +578,24 @@ export default function GtaMap({
             const data =
               regionDocument.data();
 
+            let points =
+              normalizePoints(data.points);
+
+            if (points.length < 3) {
+              points = rectangleToPoints(
+                Number(data.x ?? 0),
+                Number(data.y ?? 0),
+                Number(data.width ?? 20),
+                Number(data.height ?? 15)
+              );
+            }
+
+            const opacity = clamp(
+              Number(data.opacity ?? 0.22),
+              0.05,
+              0.9
+            );
+
             return {
               id: regionDocument.id,
 
@@ -456,39 +617,29 @@ export default function GtaMap({
                   ? (data.regionKey as MechanicRegionKey)
                   : "los",
 
-              x: Number(data.x ?? 0),
-              y: Number(data.y ?? 0),
-
-              width: Number(
-                data.width ?? 20
-              ),
-
-              height: Number(
-                data.height ?? 15
-              ),
+              points,
 
               color:
                 typeof data.color ===
                 "string"
                   ? data.color
-                  : "#3b82f6",
+                  : "#facc15",
 
-              opacity: Number(
-                data.opacity ?? 0.2
+              opacity,
+
+              hoverOpacity: clamp(
+                Number(
+                  data.hoverOpacity ??
+                    opacity + 0.28
+                ),
+                opacity,
+                0.95
               ),
 
-              hoverOpacity: Number(
-                data.hoverOpacity ??
-                  0.5
-              ),
-
-              rotate: Number(
-                data.rotate ?? 0
-              ),
-
-              borderRadius: Number(
-                data.borderRadius ??
-                  30
+              glow: clamp(
+                Number(data.glow ?? 16),
+                0,
+                50
               ),
 
               showLabel:
@@ -605,95 +756,166 @@ export default function GtaMap({
             draggable={false}
           />
 
-          {regions.map((region) => {
-            const active =
-              activeRegionId ===
-              region.id;
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="absolute inset-0 z-10 h-full w-full"
+            aria-label="مناطق الخريطة"
+          >
+            {regions.map((region) => {
+              const active =
+                activeRegionId ===
+                region.id;
 
-            return (
-              <button
-                key={region.id}
-                type="button"
-                onMouseEnter={() =>
-                  setHoveredRegionId(
-                    region.id
-                  )
-                }
-                onFocus={() =>
-                  setHoveredRegionId(
-                    region.id
-                  )
-                }
-                onBlur={() =>
-                  setHoveredRegionId(
-                    null
-                  )
-                }
-                onClick={() =>
-                  setSelectedRegionId(
-                    (current) =>
-                      current ===
+              const path =
+                pointsToSmoothPath(
+                  region.points
+                );
+
+              if (!path) {
+                return null;
+              }
+
+              return (
+                <path
+                  key={region.id}
+                  d={path}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`عرض مسميات ${region.name}`}
+                  vectorEffect="non-scaling-stroke"
+                  onMouseEnter={() =>
+                    setHoveredRegionId(
                       region.id
-                        ? null
-                        : region.id
-                  )
-                }
-                className="absolute z-10 flex cursor-pointer items-center justify-center border-2 transition-all duration-300"
-                style={{
-                  left: `${region.x}%`,
-                  top: `${region.y}%`,
-                  width: `${region.width}%`,
-                  height: `${region.height}%`,
+                    )
+                  }
+                  onMouseLeave={() =>
+                    setHoveredRegionId(
+                      null
+                    )
+                  }
+                  onFocus={() =>
+                    setHoveredRegionId(
+                      region.id
+                    )
+                  }
+                  onBlur={() =>
+                    setHoveredRegionId(
+                      null
+                    )
+                  }
+                  onClick={() =>
+                    setSelectedRegionId(
+                      (current) =>
+                        current ===
+                        region.id
+                          ? null
+                          : region.id
+                    )
+                  }
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === "Enter" ||
+                      event.key === " "
+                    ) {
+                      event.preventDefault();
 
-                  borderRadius: `${region.borderRadius}%`,
-
-                  transform: `rotate(${region.rotate}deg) ${
-                    active
-                      ? "scale(1.03)"
-                      : "scale(1)"
-                  }`,
-
-                  borderColor:
+                      setSelectedRegionId(
+                        (current) =>
+                          current ===
+                          region.id
+                            ? null
+                            : region.id
+                      );
+                    }
+                  }}
+                  fill={hexToRgba(
                     region.color,
+                    active
+                      ? region.hoverOpacity
+                      : region.opacity
+                  )}
+                  stroke={region.color}
+                  strokeWidth={
+                    active ? 3 : 1.8
+                  }
+                  className="cursor-pointer outline-none transition-all duration-300"
+                  style={{
+                    filter:
+                      region.glow > 0
+                        ? `drop-shadow(0 0 ${
+                            active
+                              ? region.glow
+                              : Math.max(
+                                  4,
+                                  region.glow *
+                                    0.45
+                                )
+                          }px ${hexToRgba(
+                            region.color,
+                            active
+                              ? 0.9
+                              : 0.5
+                          )})`
+                        : "none",
 
-                  backgroundColor:
-                    hexToRgba(
-                      region.color,
-                      active
-                        ? region.hoverOpacity
-                        : region.opacity
-                    ),
+                    opacity:
+                      active ? 1 : 0.94,
+                  }}
+                />
+              );
+            })}
+          </svg>
 
-                  boxShadow: active
-                    ? `0 0 40px ${hexToRgba(
-                        region.color,
-                        0.5
-                      )}`
-                    : "none",
-                }}
-              >
-                {region.showLabel && (
+          <div className="pointer-events-none absolute inset-0 z-20">
+            {regions
+              .filter(
+                (region) =>
+                  region.showLabel
+              )
+              .map((region) => {
+                const position =
+                  getRegionLabelPosition(
+                    region.points
+                  );
+
+                const active =
+                  activeRegionId ===
+                  region.id;
+
+                return (
                   <span
-                    className="rounded-full border px-4 py-2 text-sm font-black text-white shadow-xl backdrop-blur-md"
+                    key={`${region.id}-label`}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-black text-white shadow-xl backdrop-blur-md transition-all duration-300 md:px-4 md:py-2 md:text-sm ${
+                      active
+                        ? "scale-105"
+                        : "scale-100"
+                    }`}
                     style={{
+                      left: `${position.x}%`,
+                      top: `${position.y}%`,
                       borderColor:
                         region.color,
-
                       backgroundColor:
                         "rgba(0,0,0,.78)",
+                      boxShadow: active
+                        ? `0 0 24px ${hexToRgba(
+                            region.color,
+                            0.65
+                          )}`
+                        : undefined,
                     }}
                   >
                     {region.name}
                   </span>
-                )}
-              </button>
-            );
-          })}
+                );
+              })}
+          </div>
 
           {regions.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
               <div className="rounded-2xl border border-yellow-500/20 bg-black/85 px-6 py-4 text-center font-bold text-yellow-400">
-                ما تم إضافة مناطق حتى
+                لم تتم إضافة مناطق حتى
                 الآن.
               </div>
             </div>
@@ -723,7 +945,7 @@ export default function GtaMap({
                 />
 
                 <h3 className="mt-5 text-xl font-black text-white">
-                  اختار منطقة من
+                  اختر منطقة من
                   الخريطة
                 </h3>
 
@@ -740,8 +962,8 @@ export default function GtaMap({
 
       {!publicMode && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-500">
-          تعديل المناطق متاح من صفحة
-          إدارة الخريطة.
+          الإضافة والتعديل متاحان فقط من صفحة إدارة الخريطة
+          لأصحاب الصلاحية.
         </div>
       )}
     </div>

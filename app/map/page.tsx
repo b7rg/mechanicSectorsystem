@@ -14,7 +14,6 @@ const GtaMap = dynamic(
   () => import("@/components/map/GtaMap"),
   {
     ssr: false,
-
     loading: () => (
       <div className="flex min-h-[650px] items-center justify-center rounded-[32px] border border-white/10 bg-[#141414]">
         <div className="text-center">
@@ -87,8 +86,8 @@ export default function PublicMapPage() {
               </h2>
 
               <p className="mt-5 max-w-3xl text-base leading-8 text-zinc-400 md:text-lg">
-                اختر مركز لوس أو ساندي أو بوليتو أو الساحل
-                لمعرفة المسميات المعتمدة لكل مستوى والاعتمادات
+                اختر إحدى المناطق من الخريطة لمعرفة
+                المسميات المعتمدة لكل مستوى والاعتمادات
                 المطلوبة.
               </p>
             </div>
@@ -96,7 +95,7 @@ export default function PublicMapPage() {
             <div className="rounded-2xl border border-green-500/20 bg-green-500/10 px-5 py-4">
               <p className="flex items-center gap-2 font-black text-green-400">
                 <ShieldCheck size={20} />
-                متاحة لجميع أفراد القطاع
+                متاحة للجميع
               </p>
 
               <p className="mt-2 text-sm text-zinc-400">
@@ -110,7 +109,8 @@ export default function PublicMapPage() {
       </div>
 
       <footer className="mt-10 border-t border-white/10 py-7 text-center text-sm text-zinc-600">
-        جميع المسميات المعروضة معتمدة من قيادة قطاع الميكانيك
+        جميع المسميات المعروضة معتمدة من قيادة قطاع
+        الميكانيك
       </footer>
     </main>
   );

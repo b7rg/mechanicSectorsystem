@@ -2,7 +2,7 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
-import { getAuth } from "firebase-admin/auth";
+export const runtime = "nodejs";
 import { FieldValue } from "firebase-admin/firestore";
 
 import { getAdminDb } from "@/lib/firebaseAdmin";
@@ -64,8 +64,14 @@ async function requireOwner(
     );
   }
 
-  const db = getAdminDb();
-  const adminAuth = getAuth();
+    const db = getAdminDb();
+
+const { getAuth } = await import(
+  "firebase-admin/auth"
+);
+
+const adminAuth = getAuth();
+
 
   let decodedToken;
 
