@@ -8,23 +8,27 @@ export const courses = [
     name: "التعديل والتزويد",
   },
   {
-    id: "field-supervisor",
-    name: "المشرف الميداني",
-  },
-  {
     id: "garage-affairs",
     name: "شؤون الكراج",
+  },
+  {
+    id: "recruitment",
+    name: "شؤون التوظيف",
   },
   {
     id: "administration",
     name: "الشؤون الإدارية",
   },
   {
-    id: "general-supervision",
-    name: "الإشراف العام",
+    id: "field-supervisor",
+    name: "مشرف ميداني",
   },
   {
-    id: "recruitment",
-    name: "شؤون التوظيف",
+    id: "general-supervision",
+    name: "إشراف عام",
   },
-];
+  {
+    id: "certified-trainer",
+    name: "مدرب معتمد",
+  },
+] as const;
