@@ -1,10 +1,18 @@
 "use client";
 
+import {
+  getAdministrationRoleByLevel,
+  getAdministrationRoleByTitle,
+  isAdministrationTitle,
+  type AdministrationTitle,
+} from "@/lib/administration";
+
 export type EmployeeType =
   | "main"
   | "leader"
   | "certified"
-  | "certified_leader";
+  | "certified_leader"
+  | "administration";
 
 export type EmployeeStatus =
   | "active"
@@ -23,7 +31,14 @@ export type LevelNumber =
   | 9
   | 10;
 
-export type CodePrefix = "G" | "C" | "CA";
+export type CodePrefix =
+  | "G"
+  | "C"
+  | "CA"
+  | "S"
+  | "M"
+  | "F"
+  | "A";
 
 export type EmployeeRecord = {
   id: string;
@@ -36,6 +51,7 @@ export type EmployeeRecord = {
   rank: string;
   level: LevelNumber;
   mainSector: string;
+  administrationTitle?: AdministrationTitle;
   status: EmployeeStatus;
   certified: boolean;
   certifiedLeader: boolean;
@@ -52,10 +68,7 @@ export type LevelRange = {
 };
 
 /*
-  الموظف الأساسي G:
-  1-4 = 20
-  5-7 = 15
-  8 = 10
+  الموظف الأساسي G
 */
 export const MAIN_LEVEL_RANGES: LevelRange[] = [
   { level: 1, from: 310, to: 271, label: "المستوى الأول" },
@@ -69,9 +82,7 @@ export const MAIN_LEVEL_RANGES: LevelRange[] = [
 ];
 
 /*
-  القيادة الأساسية G:
-  المستوى 9 = G-010 إلى G-006
-  المستوى 10 = G-005 إلى G-001
+  القيادة الأساسية G
 */
 export const LEADER_LEVEL_RANGES: LevelRange[] = [
   { level: 9, from: 10, to: 6, label: "المستوى التاسع" },
@@ -79,12 +90,7 @@ export const LEADER_LEVEL_RANGES: LevelRange[] = [
 ];
 
 /*
-  اللاعب المعتمد C — ضعف السعات السابقة:
-  1-4 = 40
-  5-7 = 30
-  8 = 20
-  9 = 10
-  10 = 10
+  اللاعب المعتمد C
 */
 export const CERTIFIED_LEVEL_RANGES: LevelRange[] = [
   { level: 1, from: 290, to: 251, label: "المستوى الأول" },
@@ -100,13 +106,7 @@ export const CERTIFIED_LEVEL_RANGES: LevelRange[] = [
 ];
 
 /*
-  قيادة المعتمد CA:
-  1-5 = مقعد واحد لكل مستوى
-  6 = 60
-  7 = 50
-  8 = 40
-  9 = 30
-  10 = 20
+  قيادة المعتمد CA
 */
 export const CERTIFIED_LEADER_LEVEL_RANGES: LevelRange[] = [
   { level: 1, from: 205, to: 205, label: "المستوى الأول" },
@@ -119,6 +119,24 @@ export const CERTIFIED_LEADER_LEVEL_RANGES: LevelRange[] = [
   { level: 8, from: 90, to: 51, label: "المستوى الثامن" },
   { level: 9, from: 50, to: 21, label: "المستوى التاسع" },
   { level: 10, from: 20, to: 1, label: "المستوى العاشر" },
+];
+
+/*
+  الإدارة:
+  دعم ومساعدة = S = المستوى 2
+  مشرف متدرب / مشرف / مشرف+ = M = المستويات 3-5
+  مشرف عام = F = المستوى 6
+  أدمن = A = المستوى 7
+
+  رموز M تستخدم تسلسلاً واحدًا مشتركًا بين مستويات 3 و4 و5.
+*/
+export const ADMINISTRATION_LEVEL_RANGES: LevelRange[] = [
+  { level: 2, from: 999, to: 1, label: "المستوى الثاني" },
+  { level: 3, from: 999, to: 1, label: "المستوى الثالث" },
+  { level: 4, from: 999, to: 1, label: "المستوى الرابع" },
+  { level: 5, from: 999, to: 1, label: "المستوى الخامس" },
+  { level: 6, from: 999, to: 1, label: "المستوى السادس" },
+  { level: 7, from: 999, to: 1, label: "المستوى السابع" },
 ];
 
 /* للتوافق مع الملفات القديمة */
@@ -139,7 +157,11 @@ export const LEADER_LEVEL_NUMBERS: LevelNumber[] = [
   9, 10,
 ];
 
-/* اسم بديل حتى ما ترجع مشكلة الاستيراد القديمة */
+export const ADMINISTRATION_LEVEL_NUMBERS: LevelNumber[] = [
+  2, 3, 4, 5, 6, 7,
+];
+
+/* اسم بديل للتوافق مع الاستيرادات القديمة */
 export const LEADERSHIP_LEVEL_NUMBERS =
   LEADER_LEVEL_NUMBERS;
 
@@ -151,6 +173,7 @@ export const EMPLOYEE_TYPE_LABELS: Record<
   leader: "قيادة",
   certified: "لاعب معتمد",
   certified_leader: "قيادة معتمدة",
+  administration: "الإدارة",
 };
 
 export const STATUS_LABELS: Record<
@@ -173,11 +196,38 @@ export function getLevelsForEmployeeType(
     return LEADER_LEVEL_NUMBERS;
   }
 
+  if (employeeType === "administration") {
+    return ADMINISTRATION_LEVEL_NUMBERS;
+  }
+
   return LEVEL_NUMBERS;
 }
 
+export function getAdministrationPrefixForLevel(
+  level: LevelNumber
+): CodePrefix {
+  if (level === 2) {
+    return "S";
+  }
+
+  if (
+    level === 3 ||
+    level === 4 ||
+    level === 5
+  ) {
+    return "M";
+  }
+
+  if (level === 6) {
+    return "F";
+  }
+
+  return "A";
+}
+
 export function getPrefixForEmployeeType(
-  employeeType: EmployeeType
+  employeeType: EmployeeType,
+  administrationTitle?: AdministrationTitle
 ): CodePrefix {
   if (
     employeeType === "main" ||
@@ -188,6 +238,19 @@ export function getPrefixForEmployeeType(
 
   if (employeeType === "certified_leader") {
     return "CA";
+  }
+
+  if (employeeType === "administration") {
+    if (
+      administrationTitle &&
+      isAdministrationTitle(administrationTitle)
+    ) {
+      return getAdministrationRoleByTitle(
+        administrationTitle
+      ).prefix;
+    }
+
+    return "S";
   }
 
   return "C";
@@ -256,6 +319,12 @@ export function getLevelRangeForEmployeeType(
     );
   }
 
+  if (employeeType === "administration") {
+    return ADMINISTRATION_LEVEL_RANGES.find(
+      (item) => item.level === level
+    );
+  }
+
   return CERTIFIED_LEADER_LEVEL_RANGES.find(
     (item) => item.level === level
   );
@@ -276,7 +345,13 @@ export function getCodesForLevel(
   }
 
   const prefix =
-    getPrefixForEmployeeType(employeeType);
+    employeeType === "administration"
+      ? getAdministrationPrefixForLevel(
+          level
+        )
+      : getPrefixForEmployeeType(
+          employeeType
+        );
 
   return createDescendingNumbers(
     range.from,
@@ -300,7 +375,9 @@ export function getLevelCapacity(
     return 0;
   }
 
-  return Math.abs(range.from - range.to) + 1;
+  return Math.abs(
+    range.from - range.to
+  ) + 1;
 }
 
 export function getTotalCapacity(
@@ -331,12 +408,22 @@ export function parseEmployeeCode(
   const [rawPrefix, rawNumber] =
     cleanValue.split("-");
 
+  const allowedPrefixes: CodePrefix[] = [
+    "G",
+    "C",
+    "CA",
+    "S",
+    "M",
+    "F",
+    "A",
+  ];
+
   const prefix: CodePrefix =
-    rawPrefix === "CA"
-      ? "CA"
-      : rawPrefix === "C"
-        ? "C"
-        : "G";
+    allowedPrefixes.includes(
+      rawPrefix as CodePrefix
+    )
+      ? (rawPrefix as CodePrefix)
+      : "G";
 
   const codeNumber = Number.parseInt(
     rawNumber ?? "0",
@@ -367,6 +454,26 @@ export function getLevelFromCode(
   prefix: CodePrefix,
   codeNumber: number
 ): LevelNumber {
+  if (prefix === "S") {
+    return 2;
+  }
+
+  /*
+    رمز M مشترك بين المستويات 3 و4 و5.
+    عند وجود level محفوظ في السجل سيُستخدم بدل هذه القيمة الاحتياطية.
+  */
+  if (prefix === "M") {
+    return 3;
+  }
+
+  if (prefix === "F") {
+    return 6;
+  }
+
+  if (prefix === "A") {
+    return 7;
+  }
+
   if (prefix === "CA") {
     return (
       findLevelInRanges(
@@ -407,6 +514,23 @@ export function normalizeEmployeeDocument(
   const parsedCode =
     parseEmployeeCode(rawCode);
 
+  const rawAdministrationTitle =
+    data.administrationTitle;
+
+  const administrationTitle =
+    isAdministrationTitle(
+      rawAdministrationTitle
+    )
+      ? rawAdministrationTitle
+      : undefined;
+
+  const administrationRole =
+    administrationTitle
+      ? getAdministrationRoleByTitle(
+          administrationTitle
+        )
+      : null;
+
   const rawLevel = Number(data.level);
 
   const detectedLevel =
@@ -421,6 +545,12 @@ export function normalizeEmployeeDocument(
     data.employeeType as
       | EmployeeType
       | undefined;
+
+  const isAdministrationCode =
+    parsedCode.prefix === "S" ||
+    parsedCode.prefix === "M" ||
+    parsedCode.prefix === "F" ||
+    parsedCode.prefix === "A";
 
   const isLeadershipG =
     parsedCode.prefix === "G" &&
@@ -438,9 +568,18 @@ export function normalizeEmployeeDocument(
     employeeType !== "main" &&
     employeeType !== "leader" &&
     employeeType !== "certified" &&
-    employeeType !== "certified_leader"
+    employeeType !==
+      "certified_leader" &&
+    employeeType !==
+      "administration"
   ) {
     if (
+      isAdministrationCode ||
+      administrationTitle
+    ) {
+      employeeType =
+        "administration";
+    } else if (
       parsedCode.prefix === "CA" ||
       data.certifiedLeader === true
     ) {
@@ -458,6 +597,22 @@ export function normalizeEmployeeDocument(
     }
   }
 
+  /*
+    لو كان السجل مصنفًا بنوع قديم لكن يحمل رمز إدارة
+    أو مسمى إدارة، تُعتمد الإدارة.
+  */
+  if (
+    (
+      isAdministrationCode ||
+      administrationTitle
+    ) &&
+    employeeType !==
+      "administration"
+  ) {
+    employeeType =
+      "administration";
+  }
+
   /* تحويل سجلات القيادة القديمة من main إلى leader */
   if (
     employeeType === "main" &&
@@ -471,17 +626,37 @@ export function normalizeEmployeeDocument(
       employeeType
     );
 
+  const preferredLevel =
+    employeeType === "administration" &&
+    administrationRole
+      ? administrationRole.level
+      : detectedLevel;
+
   const level =
     allowedLevels.includes(
-      detectedLevel
+      preferredLevel
     )
-      ? detectedLevel
+      ? preferredLevel
       : allowedLevels[0];
 
+  const resolvedAdministrationRole =
+    employeeType === "administration"
+      ? administrationRole ??
+        getAdministrationRoleByLevel(
+          level
+        )
+      : null;
+
   const prefix =
-    getPrefixForEmployeeType(
-      employeeType
-    );
+    employeeType === "administration"
+      ? resolvedAdministrationRole
+          ?.prefix ??
+        getAdministrationPrefixForLevel(
+          level
+        )
+      : getPrefixForEmployeeType(
+          employeeType
+        );
 
   const selectedRange =
     getLevelRangeForEmployeeType(
@@ -491,6 +666,7 @@ export function normalizeEmployeeDocument(
 
   const codeMatchesSelectedRange =
     selectedRange &&
+    parsedCode.prefix === prefix &&
     parsedCode.codeNumber >=
       selectedRange.to &&
     parsedCode.codeNumber <=
@@ -525,7 +701,9 @@ export function normalizeEmployeeDocument(
 
   return {
     id,
-    name: String(data.name ?? ""),
+    name: String(
+      data.name ?? ""
+    ),
     discordId: String(
       data.discordId ?? ""
     ),
@@ -538,6 +716,8 @@ export function normalizeEmployeeDocument(
     mainSector: String(
       data.mainSector ?? ""
     ),
+    administrationTitle:
+      resolvedAdministrationRole?.title,
     status,
     certified,
     certifiedLeader:

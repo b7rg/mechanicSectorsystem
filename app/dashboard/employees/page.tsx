@@ -77,11 +77,12 @@ const emptyForm: EmployeeForm = {
   status: "active",
 };
 
-const typeIcons = {
+const employeeemployeeTypeIcons = {
   main: Users,
   leader: Crown,
   certified: BadgeCheck,
   certified_leader: Crown,
+  administration: Users,
 } satisfies Record<EmployeeCategory, typeof Users>;
 
 function getStoredEmployeeType(
@@ -147,6 +148,13 @@ function getStatusBadge(status: EmployeeStatus) {
 
   return "bg-green-500/10 text-green-400";
 }
+const employeeTypeIcons = {
+  main: Users,
+  leader: Crown,
+  certified: BadgeCheck,
+  certified_leader: Crown,
+  administration: Users,
+} satisfies Record<EmployeeCategory, typeof Users>;
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
@@ -863,7 +871,7 @@ export default function EmployeesPage() {
                 const employeeCategory =
                   getEmployeeCategory(employee);
                 const Icon =
-                  typeIcons[employeeCategory];
+                            employeeTypeIcons[employeeCategory];
 
                 return (
                   <article
