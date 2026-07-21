@@ -1,3 +1,5 @@
+import { normalizeCourseName } from "./courseCatalog";
+
 export type EmployeeReports = {
   fieldGuide?: number;
   fieldSupervisor?: number;
@@ -18,27 +20,17 @@ export type PromotionEmployeeData = {
 
 export const promotionRules: Record<number, PromotionRule> = {
   1: {
-    reports: {
-      fieldGuide: 15,
-    },
-    courses: [
-      "الموجة الميداني",
-    ],
+    reports: { fieldGuide: 15 },
+    courses: ["الموجة الميداني"],
   },
 
   2: {
-    reports: {
-      fieldGuide: 25,
-    },
-    courses: [
-      "الموجة الميداني",
-    ],
+    reports: { fieldGuide: 25 },
+    courses: ["الموجة الميداني"],
   },
 
   3: {
-    reports: {
-      fieldGuide: 30,
-    },
+    reports: { fieldGuide: 30 },
     courses: [
       "الموجة الميداني",
       "التعديل والتزويد",
@@ -119,14 +111,15 @@ export function getPromotionEligibility(
 ) {
   const level = toNumber(employee.level);
   const rule = promotionRules[level] ?? null;
-
   const reports = employee.reports ?? {};
 
-  const employeeCourses = Array.isArray(
-    employee.courses
-  )
+  const employeeCourses = Array.isArray(employee.courses)
     ? employee.courses
     : [];
+
+  const normalizedEmployeeCourses = new Set(
+    employeeCourses.map(normalizeCourseName)
+  );
 
   if (level >= 10) {
     return {
@@ -159,7 +152,10 @@ export function getPromotionEligibility(
   }
 
   const missingCourses = rule.courses.filter(
-    (course) => !employeeCourses.includes(course)
+    (course) =>
+      !normalizedEmployeeCourses.has(
+        normalizeCourseName(course)
+      )
   );
 
   const reportRequirements = [
@@ -169,28 +165,21 @@ export function getPromotionEligibility(
     },
     {
       current: toNumber(reports.fieldSupervisor),
-      required: toNumber(
-        rule.reports.fieldSupervisor
-      ),
+      required: toNumber(rule.reports.fieldSupervisor),
     },
     {
       current: toNumber(reports.recruitment),
       required: toNumber(rule.reports.recruitment),
     },
     {
-      current: toNumber(
-        reports.generalSupervisor
-      ),
-      required: toNumber(
-        rule.reports.generalSupervisor
-      ),
+      current: toNumber(reports.generalSupervisor),
+      required: toNumber(rule.reports.generalSupervisor),
     },
   ].filter((item) => item.required > 0);
 
-  const completedReports =
-    reportRequirements.filter(
-      (item) => item.current >= item.required
-    ).length;
+  const completedReports = reportRequirements.filter(
+    (item) => item.current >= item.required
+  ).length;
 
   const completedCourses =
     rule.courses.length - missingCourses.length;
@@ -207,9 +196,7 @@ export function getPromotionEligibility(
       : Math.min(
           100,
           Math.round(
-            (completedRequirements /
-              totalRequirements) *
-              100
+            (completedRequirements / totalRequirements) * 100
           )
         );
 
