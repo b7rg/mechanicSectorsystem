@@ -20,10 +20,12 @@ export const permissions = {
   supervisor: [
     "dashboard",
     "employees",
+    "promotions",
     "courses",
     "certified",
     "agreement",
     "announcements",
+    "violations",
     "calendar",
     "statistics",
     "map",

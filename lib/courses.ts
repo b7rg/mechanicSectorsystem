@@ -8,6 +8,10 @@ export const courses = [
     name: "التعديل والتزويد",
   },
   {
+  id: "fleet",
+  name: "الأسطول",
+},
+  {
     id: "garage-affairs",
     name: "شؤون الكراج",
   },
