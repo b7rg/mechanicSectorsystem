@@ -1,76 +1,179 @@
 import {
-  BadgeCheck,
+  Building2,
   HeartPulse,
   Shield,
-  UsersRound,
+  ShieldCheck,
+  Users,
 } from "lucide-react";
 
-import RoleGuard from "@/components/auth/RoleGuard";
-
 type AgreementRow = {
-  source: string;
-  target: string;
+  from: string;
+  to: string;
 };
 
-function AgreementTable({
+type AgreementCardProps = {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{
+    className?: string;
+    size?: number;
+  }>;
+  rows: AgreementRow[];
+  note: string;
+  theme: {
+    border: string;
+    bg: string;
+    iconBg: string;
+    iconColor: string;
+    titleColor: string;
+    valueColor: string;
+    noteBg: string;
+    noteColor: string;
+    headBg: string;
+  };
+};
+
+const militaryRows: AgreementRow[] = [
+  {
+    from: "رقيب",
+    to: "المستوى الثالث",
+  },
+  {
+    from: "رقيب أول",
+    to: "المستوى الرابع",
+  },
+  {
+    from: "رئيس رقباء",
+    to: "المستوى الرابع",
+  },
+  {
+    from: "ملازم",
+    to: "المستوى الخامس",
+  },
+  {
+    from: "ملازم أول",
+    to: "المستوى الخامس",
+  },
+  {
+    from: "نقيب وما فوق",
+    to: "المستوى السادس",
+  },
+];
+
+const redCrescentRows: AgreementRow[] = [
+  {
+    from: "المستوى الثالث",
+    to: "المستوى الثاني",
+  },
+  {
+    from: "المستوى الرابع",
+    to: "المستوى الثالث",
+  },
+  {
+    from: "المستوى الخامس",
+    to: "المستوى الرابع",
+  },
+  {
+    from: "المستوى السادس",
+    to: "المستوى الخامس",
+  },
+  {
+    from: "المستوى السابع",
+    to: "المستوى الخامس",
+  },
+];
+
+const administrationRows: AgreementRow[] = [
+  {
+    from: "دعم ومساعدة — S",
+    to: "المستوى الثاني",
+  },
+  {
+    from: "مشرف متدرب — M",
+    to: "المستوى الثالث",
+  },
+  {
+    from: "مشرف — M",
+    to: "المستوى الرابع",
+  },
+  {
+    from: "مشرف+ — M",
+    to: "المستوى الخامس",
+  },
+  {
+    from: "مشرف عام — F",
+    to: "المستوى السادس",
+  },
+  {
+    from: "أدمن — A",
+    to: "المستوى السابع",
+  },
+];
+
+function AgreementCard({
   title,
   description,
   icon: Icon,
   rows,
-  maximum,
-}: {
-  title: string;
-  description: string;
-  icon: typeof Shield;
-  rows: AgreementRow[];
-  maximum: string;
-}) {
+  note,
+  theme,
+}: AgreementCardProps) {
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#141414]/90">
-      <div className="border-b border-white/10 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-yellow-500/20 bg-yellow-500/10 text-yellow-400">
-            <Icon size={24} />
-          </div>
+    <section
+      className={`overflow-hidden rounded-[32px] border ${theme.border} ${theme.bg} shadow-[0_0_0_1px_rgba(255,255,255,0.02)]`}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-white/5 px-6 py-6 md:px-8">
+        <div>
+          <h2
+            className={`text-2xl font-black md:text-4xl ${theme.titleColor}`}
+          >
+            {title}
+          </h2>
 
-          <div>
-            <h2 className="text-2xl font-black text-white">
-              {title}
-            </h2>
+          <p className="mt-2 text-sm leading-7 text-zinc-400 md:text-base">
+            {description}
+          </p>
+        </div>
 
-            <p className="mt-2 text-sm leading-7 text-zinc-400">
-              {description}
-            </p>
-          </div>
+        <div
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/10 ${theme.iconBg}`}
+        >
+          <Icon
+            size={30}
+            className={theme.iconColor}
+          />
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] text-right">
-          <thead className="bg-white/[0.03] text-sm text-zinc-400">
-            <tr>
-              <th className="px-6 py-4 font-bold">
+        <table className="w-full min-w-[640px] border-collapse">
+          <thead>
+            <tr
+              className={`${theme.headBg} text-right text-sm font-black text-zinc-300`}
+            >
+              <th className="px-6 py-4 md:px-8">
                 الرتبة أو المستوى الأساسي
               </th>
-
-              <th className="px-6 py-4 font-bold">
+              <th className="px-6 py-4 md:px-8">
                 المستوى في الميكانيك
               </th>
             </tr>
           </thead>
 
           <tbody>
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <tr
-                key={`${row.source}-${row.target}`}
+                key={`${row.from}-${index}`}
                 className="border-t border-white/5"
               >
-                <td className="px-6 py-4 font-bold text-zinc-200">
-                  {row.source}
+                <td className="px-6 py-5 text-base font-bold text-white md:px-8 md:text-xl">
+                  {row.from}
                 </td>
 
-                <td className="px-6 py-4 font-bold text-yellow-400">
-                  {row.target}
+                <td
+                  className={`px-6 py-5 text-base font-black md:px-8 md:text-xl ${theme.valueColor}`}
+                >
+                  {row.to}
                 </td>
               </tr>
             ))}
@@ -78,8 +181,10 @@ function AgreementTable({
         </table>
       </div>
 
-      <div className="border-t border-white/10 bg-yellow-500/[0.06] px-6 py-4 text-sm font-bold text-yellow-300">
-        {maximum}
+      <div
+        className={`border-t border-white/5 px-6 py-4 text-center text-sm font-black md:px-8 md:text-base ${theme.noteBg} ${theme.noteColor}`}
+      >
+        {note}
       </div>
     </section>
   );
@@ -87,131 +192,110 @@ function AgreementTable({
 
 export default function AgreementPage() {
   return (
-    <RoleGuard
-      allow={[
-        "owner",
-        "leader",
-        "supervisor",
-      ]}
+    <main
+      dir="rtl"
+      className="space-y-8"
     >
-      <main
-        dir="rtl"
-        className="mx-auto max-w-6xl space-y-8 p-4 md:p-8"
-      >
-        <header className="rounded-3xl border border-yellow-500/15 bg-gradient-to-l from-yellow-500/10 to-transparent p-7">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-500 text-black">
-              <BadgeCheck size={28} />
-            </div>
+      <header className="rounded-[32px] border border-white/10 bg-[#0f0f10] px-6 py-7 md:px-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-yellow-400 md:text-5xl">
+              صفحة الاتفاقيات
+            </h1>
 
-            <div>
-              <h1 className="text-3xl font-black text-white md:text-4xl">
-                اتفاقية معادلة الرتب والمستويات
-              </h1>
-
-              <p className="mt-2 leading-7 text-zinc-400">
-                المستويات المعتمدة عند انتقال موظفي القطاعات
-                والإدارة إلى قطاع كراج الميكانيك.
-              </p>
-            </div>
+            <p className="mt-3 max-w-3xl text-sm leading-8 text-zinc-400 md:text-base">
+              توضح هذه الصفحة آلية معادلة الرتب والمستويات عند انتقال
+              الأفراد من الجهات الأخرى إلى قطاع كراج الميكانيك، إضافة إلى
+              اتفاقية الإدارة المعتمدة.
+            </p>
           </div>
-        </header>
 
-        <AgreementTable
-          title="اتفاقية القطاعات العسكرية"
-          description="معادلة الرتب العسكرية عند الانتقال إلى كراج الميكانيك."
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-yellow-500/20 bg-yellow-500/10">
+            <ShieldCheck
+              size={30}
+              className="text-yellow-400"
+            />
+          </div>
+        </div>
+      </header>
+
+      <div className="grid gap-8">
+        <AgreementCard
+          title="اتفاقية الأمن العام"
+          description="معادلة رتب الأمن العام عند الانتقال إلى كراج الميكانيك."
           icon={Shield}
-          rows={[
-            {
-              source: "رقيب",
-              target: "المستوى الثالث",
-            },
-            {
-              source: "رقيب أول",
-              target: "المستوى الرابع",
-            },
-            {
-              source: "رئيس رقباء",
-              target: "المستوى الرابع",
-            },
-            {
-              source: "ملازم",
-              target: "المستوى الخامس",
-            },
-            {
-              source: "ملازم أول",
-              target: "المستوى الخامس",
-            },
-            {
-              source: "نقيب وما فوق",
-              target: "المستوى السادس",
-            },
-          ]}
-          maximum="الحد الأعلى للقطاعات العسكرية هو المستوى السادس مهما كانت الرتبة."
+          rows={militaryRows}
+          note="الحد الأعلى للأمن العام هو المستوى السادس مهما كانت الرتبة."
+          theme={{
+            border: "border-blue-500/20",
+            bg: "bg-gradient-to-br from-[#0d1420] via-[#111214] to-[#0b0c0f]",
+            iconBg: "bg-blue-500/10",
+            iconColor: "text-blue-300",
+            titleColor: "text-blue-300",
+            valueColor: "text-blue-200",
+            noteBg: "bg-blue-500/10",
+            noteColor: "text-blue-200",
+            headBg: "bg-blue-500/5",
+          }}
         />
 
-        <AgreementTable
+        <AgreementCard
+          title="اتفاقية أمن المنشآت"
+          description="معادلة رتب أمن المنشآت عند الانتقال إلى كراج الميكانيك."
+          icon={Building2}
+          rows={militaryRows}
+          note="الحد الأعلى لأمن المنشآت هو المستوى السادس مهما كانت الرتبة."
+          theme={{
+            border: "border-zinc-500/20",
+            bg: "bg-gradient-to-br from-[#151515] via-[#111214] to-[#0b0c0f]",
+            iconBg: "bg-zinc-400/10",
+            iconColor: "text-zinc-300",
+            titleColor: "text-zinc-200",
+            valueColor: "text-zinc-200",
+            noteBg: "bg-zinc-400/10",
+            noteColor: "text-zinc-200",
+            headBg: "bg-zinc-400/5",
+          }}
+        />
+
+        <AgreementCard
           title="اتفاقية الهلال الأحمر"
           description="معادلة مستويات الهلال الأحمر عند الانتقال إلى كراج الميكانيك."
           icon={HeartPulse}
-          rows={[
-            {
-              source: "المستوى الثالث",
-              target: "المستوى الثاني",
-            },
-            {
-              source: "المستوى الرابع",
-              target: "المستوى الثالث",
-            },
-            {
-              source: "المستوى الخامس",
-              target: "المستوى الرابع",
-            },
-            {
-              source: "المستوى السادس",
-              target: "المستوى الخامس",
-            },
-            {
-              source: "المستوى السابع",
-              target: "المستوى الخامس",
-            },
-          ]}
-          maximum="الحد الأعلى لموظفي الهلال الأحمر هو المستوى الخامس."
+          rows={redCrescentRows}
+          note="الحد الأعلى لموظفي الهلال الأحمر هو المستوى الخامس."
+          theme={{
+            border: "border-red-500/20",
+            bg: "bg-gradient-to-br from-[#1a0f12] via-[#111214] to-[#0b0c0f]",
+            iconBg: "bg-red-500/10",
+            iconColor: "text-red-300",
+            titleColor: "text-red-300",
+            valueColor: "text-red-200",
+            noteBg: "bg-red-500/10",
+            noteColor: "text-red-200",
+            headBg: "bg-red-500/5",
+          }}
         />
 
-        <AgreementTable
+        <AgreementCard
           title="اتفاقية الإدارة"
           description="المستوى والرمز المعتمد حسب المسمى الإداري."
-          icon={UsersRound}
-          rows={[
-            {
-              source: "دعم ومساعدة — S",
-              target: "المستوى الثاني",
-            },
-            {
-              source: "مشرف متدرب — M",
-              target: "المستوى الثالث",
-            },
-            {
-              source: "مشرف — M",
-              target: "المستوى الرابع",
-            },
-            {
-              source: "مشرف+ — M",
-              target: "المستوى الخامس",
-            },
-            {
-              source: "مشرف عام — F",
-              target: "المستوى السادس",
-            },
-            {
-              source: "أدمن — A",
-              target: "المستوى السابع",
-            },
-          ]}
-          maximum="موظف الإدارة يُعيّن مباشرة حسب مسماه، ولا يخضع لشروط الترقية أو التقارير أو الدورات."
+          icon={Users}
+          rows={administrationRows}
+          note="موظف الإدارة يُعيّن مباشرة حسب مسماه، ولا يخضع لشروط الترقية أو التقارير أو الدورات."
+          theme={{
+            border: "border-rose-700/25",
+            bg: "bg-gradient-to-br from-[#1a0d12] via-[#111214] to-[#0b0c0f]",
+            iconBg: "bg-rose-700/15",
+            iconColor: "text-rose-300",
+            titleColor: "text-rose-300",
+            valueColor: "text-rose-200",
+            noteBg: "bg-rose-700/15",
+            noteColor: "text-rose-200",
+            headBg: "bg-rose-700/5",
+          }}
         />
-      </main>
-    </RoleGuard>
+      </div>
+    </main>
   );
 }
