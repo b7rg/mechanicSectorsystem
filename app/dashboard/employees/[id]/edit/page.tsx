@@ -5,90 +5,83 @@ import {
   useMemo,
   useState,
 } from "react";
-
 import {
   useParams,
   useRouter,
 } from "next/navigation";
-
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   onSnapshot,
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-
 import {
   Loader2,
   Save,
 } from "lucide-react";
 
-import { db } from "@/lib/firebase";
-import { courses } from "@/lib/courses";
-import { addActivity } from "@/lib/activity";
-
 import RoleGuard from "@/components/auth/RoleGuard";
-
+import { addActivity } from "@/lib/activity";
 import {
-  LEADER_LEVEL_NUMBERS,
-  LEVEL_NUMBERS,
-  MAIN_LEVEL_NUMBERS,
+  ADMINISTRATION_ROLES,
+  getAdministrationRoleByLevel,
+  getAdministrationRoleByTitle,
+  type AdministrationTitle,
+} from "@/lib/administration";
+import { courses } from "@/lib/courses";
+import {
   formatEmployeeCode,
   getCodesForLevel,
+  getLevelsForEmployeeType,
   getPrefixForEmployeeType,
   normalizeEmployeeDocument,
   parseEmployeeCode,
   type EmployeeType,
   type LevelNumber,
 } from "@/lib/employeeCodes";
+import { db } from "@/lib/firebase";
 
 type UsedEmployeeCode = {
   id: string;
   fullCode: string;
 };
 
-type EmployeeCategory = EmployeeType;
-
 type EditEmployeeForm = {
   name: string;
   discordId: string;
-  employeeType: EmployeeCategory;
+  employeeType: EmployeeType;
+  administrationTitle: AdministrationTitle;
   level: LevelNumber;
   fullCode: string;
   mainSector: string;
   employeeCourses: string[];
 };
 
+const DEFAULT_ADMINISTRATION_TITLE: AdministrationTitle =
+  "دعم ومساعدة";
+
 const emptyForm: EditEmployeeForm = {
   name: "",
   discordId: "",
   employeeType: "main",
+  administrationTitle:
+    DEFAULT_ADMINISTRATION_TITLE,
   level: 1,
   fullCode: "",
   mainSector: "",
   employeeCourses: [],
 };
 
-function getStoredEmployeeType(
-  employeeType: EmployeeCategory
-): EmployeeType {
-  return employeeType;
-}
-
-function getAllowedLevels(
-  employeeType: EmployeeCategory
-): LevelNumber[] {
-  if (employeeType === "main") {
-    return MAIN_LEVEL_NUMBERS;
-  }
-
-  if (employeeType === "leader") {
-    return LEADER_LEVEL_NUMBERS;
-  }
-
-  return LEVEL_NUMBERS;
+function isCertifiedEmployeeType(
+  employeeType: EmployeeType
+) {
+  return (
+    employeeType === "certified" ||
+    employeeType === "certified_leader"
+  );
 }
 
 export default function EditEmployeePage() {
@@ -118,14 +111,28 @@ export default function EditEmployeePage() {
 
   const [loading, setLoading] =
     useState(true);
-
   const [saving, setSaving] =
     useState(false);
-
   const [
     errorMessage,
     setErrorMessage,
   ] = useState("");
+
+  const administrationRole = useMemo(
+    () =>
+      getAdministrationRoleByTitle(
+        form.administrationTitle
+      ),
+    [form.administrationTitle]
+  );
+
+  const allowedLevels = useMemo(
+    () =>
+      getLevelsForEmployeeType(
+        form.employeeType
+      ),
+    [form.employeeType]
+  );
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -139,7 +146,6 @@ export default function EditEmployeePage() {
 
               return {
                 id: employeeDocument.id,
-
                 fullCode: String(
                   data.fullCode ??
                     data.rank ??
@@ -168,7 +174,6 @@ export default function EditEmployeePage() {
         setErrorMessage(
           "رابط الموظف غير صحيح."
         );
-
         setLoading(false);
         return;
       }
@@ -193,7 +198,6 @@ export default function EditEmployeePage() {
           setErrorMessage(
             "الموظف غير موجود."
           );
-
           setLoading(false);
           return;
         }
@@ -217,25 +221,31 @@ export default function EditEmployeePage() {
               )
             : [];
 
+        const savedAdministrationTitle =
+          employee.administrationTitle ??
+          getAdministrationRoleByLevel(
+            employee.level
+          )?.title ??
+          DEFAULT_ADMINISTRATION_TITLE;
+
         setForm({
           name: employee.name,
-
           discordId:
             employee.discordId,
-
           employeeType:
             employee.employeeType,
-
+          administrationTitle:
+            savedAdministrationTitle,
           level: employee.level,
-
           fullCode:
             employee.fullCode,
-
           mainSector:
             employee.mainSector,
-
           employeeCourses:
-            savedCourses,
+            employee.employeeType ===
+            "administration"
+              ? []
+              : savedCourses,
         });
       } catch (error) {
         console.error(
@@ -254,6 +264,38 @@ export default function EditEmployeePage() {
     loadEmployee();
   }, [employeeId]);
 
+  useEffect(() => {
+    if (
+      form.employeeType !==
+      "administration"
+    ) {
+      return;
+    }
+
+    setForm((current) => {
+      if (
+        current.level ===
+          administrationRole.level &&
+        current.mainSector === "" &&
+        current.employeeCourses.length ===
+          0
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        level:
+          administrationRole.level,
+        mainSector: "",
+        employeeCourses: [],
+      };
+    });
+  }, [
+    administrationRole.level,
+    form.employeeType,
+  ]);
+
   const usedCodes = useMemo(() => {
     return new Set(
       employeeCodes
@@ -271,33 +313,47 @@ export default function EditEmployeePage() {
     employeeId,
   ]);
 
-  const storedEmployeeType =
-    getStoredEmployeeType(
-      form.employeeType
-    );
-
-  const allowedLevels =
-    getAllowedLevels(
-      form.employeeType
-    );
+  const effectiveLevel =
+    form.employeeType ===
+    "administration"
+      ? administrationRole.level
+      : form.level;
 
   const availableCodes =
     useMemo(() => {
       const levelCodes =
         getCodesForLevel(
-          storedEmployeeType,
-          form.level
+          form.employeeType,
+          effectiveLevel
         );
 
-      return levelCodes.filter(
-        (code) =>
-          !usedCodes.has(
-            code.toUpperCase()
-          )
+      const unusedCodes =
+        levelCodes.filter(
+          (code) =>
+            !usedCodes.has(
+              code.toUpperCase()
+            )
+        );
+
+      if (
+        form.employeeType !==
+        "administration"
+      ) {
+        return unusedCodes;
+      }
+
+      return [...unusedCodes].sort(
+        (firstCode, secondCode) =>
+          parseEmployeeCode(
+            firstCode
+          ).codeNumber -
+          parseEmployeeCode(
+            secondCode
+          ).codeNumber
       );
     }, [
-      storedEmployeeType,
-      form.level,
+      effectiveLevel,
+      form.employeeType,
       usedCodes,
     ]);
 
@@ -341,14 +397,39 @@ export default function EditEmployeePage() {
   }
 
   function updateEmployeeType(
-    employeeType: EmployeeCategory
+    employeeType: EmployeeType
   ) {
     const nextLevels =
-      getAllowedLevels(employeeType);
+      getLevelsForEmployeeType(
+        employeeType
+      );
 
     setForm((current) => {
+      if (
+        employeeType ===
+        "administration"
+      ) {
+        const nextRole =
+          getAdministrationRoleByTitle(
+            DEFAULT_ADMINISTRATION_TITLE
+          );
+
+        return {
+          ...current,
+          employeeType,
+          administrationTitle:
+            DEFAULT_ADMINISTRATION_TITLE,
+          level: nextRole.level,
+          fullCode: "",
+          mainSector: "",
+          employeeCourses: [],
+        };
+      }
+
       const nextLevel =
-        nextLevels.includes(current.level)
+        nextLevels.includes(
+          current.level
+        )
           ? current.level
           : nextLevels[0];
 
@@ -358,12 +439,33 @@ export default function EditEmployeePage() {
         level: nextLevel,
         fullCode: "",
         mainSector:
-          employeeType === "main" ||
-          employeeType === "leader"
-            ? ""
-            : current.mainSector,
+          isCertifiedEmployeeType(
+            employeeType
+          )
+            ? current.mainSector
+            : "",
       };
     });
+
+    setErrorMessage("");
+  }
+
+  function updateAdministrationTitle(
+    administrationTitle: AdministrationTitle
+  ) {
+    const nextRole =
+      getAdministrationRoleByTitle(
+        administrationTitle
+      );
+
+    setForm((current) => ({
+      ...current,
+      administrationTitle,
+      level: nextRole.level,
+      fullCode: "",
+      mainSector: "",
+      employeeCourses: [],
+    }));
 
     setErrorMessage("");
   }
@@ -372,6 +474,13 @@ export default function EditEmployeePage() {
     courseName: string,
     checked: boolean
   ) {
+    if (
+      form.employeeType ===
+      "administration"
+    ) {
+      return;
+    }
+
     setForm((current) => {
       if (checked) {
         const alreadyExists =
@@ -385,7 +494,6 @@ export default function EditEmployeePage() {
 
         return {
           ...current,
-
           employeeCourses: [
             ...current.employeeCourses,
             courseName,
@@ -395,7 +503,6 @@ export default function EditEmployeePage() {
 
       return {
         ...current,
-
         employeeCourses:
           current.employeeCourses.filter(
             (course) =>
@@ -415,66 +522,55 @@ export default function EditEmployeePage() {
 
     const cleanName =
       form.name.trim();
-
     const cleanDiscordId =
       form.discordId.trim();
-
     const cleanMainSector =
       form.mainSector.trim();
 
     if (!cleanName) {
       setErrorMessage(
-        "اكتبي اسم الموظف."
+        "اكتب اسم الموظف."
       );
-
       return;
     }
 
     if (!cleanDiscordId) {
       setErrorMessage(
-        "اكتبي Discord ID."
+        "اكتب Discord ID."
       );
-
       return;
     }
 
     const requiresMainSector =
-      form.employeeType ===
-        "certified" ||
-      form.employeeType ===
-        "certified_leader";
+      isCertifiedEmployeeType(
+        form.employeeType
+      );
 
     if (
       requiresMainSector &&
       !cleanMainSector
     ) {
       setErrorMessage(
-        "اكتبي القطاع الأساسي للاعب المعتمد."
+        "اكتب القطاع الأساسي للاعب المعتمد."
       );
-
       return;
     }
 
     if (!form.fullCode) {
       setErrorMessage(
-        "هذا المستوى مكتمل ولا يوجد كود متاح."
+        "لا يوجد كود متاح لهذا المستوى."
       );
-
       return;
     }
 
-    const codeUsedByAnotherEmployee =
+    if (
       usedCodes.has(
         form.fullCode.toUpperCase()
-      );
-
-    if (
-      codeUsedByAnotherEmployee
+      )
     ) {
       setErrorMessage(
         "هذا الكود مستخدم من موظف آخر."
       );
-
       return;
     }
 
@@ -483,13 +579,21 @@ export default function EditEmployeePage() {
       setErrorMessage("");
 
       const employeeType =
-        getStoredEmployeeType(
-          form.employeeType
-        );
+        form.employeeType;
+
+      const finalLevel =
+        employeeType ===
+        "administration"
+          ? administrationRole.level
+          : form.level;
 
       const prefix =
         getPrefixForEmployeeType(
-          employeeType
+          employeeType,
+          employeeType ===
+            "administration"
+            ? form.administrationTitle
+            : undefined
         );
 
       const parsedCode =
@@ -503,55 +607,64 @@ export default function EditEmployeePage() {
           parsedCode.codeNumber
         );
 
+      const isCertified =
+        isCertifiedEmployeeType(
+          employeeType
+        );
+
+      const updateData: Record<
+        string,
+        unknown
+      > = {
+        name: cleanName,
+        discordId:
+          cleanDiscordId,
+        employeeType,
+        codePrefix: prefix,
+        codeNumber:
+          parsedCode.codeNumber,
+        fullCode:
+          normalizedCode,
+        rank: normalizedCode,
+        level: finalLevel,
+        mainSector: isCertified
+          ? cleanMainSector
+          : "",
+        certified: isCertified,
+        certifiedLeader:
+          employeeType ===
+          "certified_leader",
+        isLeader:
+          employeeType ===
+          "leader",
+        administrationTitle:
+          employeeType ===
+          "administration"
+            ? form.administrationTitle
+            : deleteField(),
+        courses:
+          employeeType ===
+          "administration"
+            ? []
+            : form.employeeCourses,
+        updatedAt:
+          serverTimestamp(),
+      };
+
+      if (
+        employeeType ===
+        "administration"
+      ) {
+        updateData.reports = {};
+      }
+
       await updateDoc(
         doc(
           db,
           "employees",
           employeeId
         ),
-        {
-          name: cleanName,
-
-          discordId:
-            cleanDiscordId,
-
-          employeeType,
-
-          codePrefix: prefix,
-
-          codeNumber:
-            parsedCode.codeNumber,
-
-          fullCode:
-            normalizedCode,
-
-          rank: normalizedCode,
-
-          level: form.level,
-
-          mainSector:
-            employeeType === "main" ||
-            employeeType === "leader"
-              ? ""
-              : cleanMainSector,
-
-          certified:
-            employeeType === "certified" ||
-            employeeType === "certified_leader",
-
-          certifiedLeader:
-            employeeType ===
-            "certified_leader",
-
-          isLeader:
-            employeeType === "leader",
-
-          courses:
-            form.employeeCourses,
-
-          updatedAt:
-            serverTimestamp(),
-        }
+        updateData
       );
 
       try {
@@ -568,7 +681,6 @@ export default function EditEmployeePage() {
       router.replace(
         `/dashboard/employees/${employeeId}`
       );
-
       router.refresh();
     } catch (error) {
       console.error(
@@ -579,7 +691,6 @@ export default function EditEmployeePage() {
       setErrorMessage(
         "حدث خطأ أثناء حفظ التعديلات."
       );
-
       setSaving(false);
     }
   }
@@ -594,8 +705,7 @@ export default function EditEmployeePage() {
           />
 
           <p className="mt-4 text-zinc-400">
-            جارٍ تحميل بيانات
-            الموظف...
+            جارٍ تحميل بيانات الموظف...
           </p>
         </div>
       </div>
@@ -632,8 +742,8 @@ export default function EditEmployeePage() {
           </h1>
 
           <p className="mt-2 text-zinc-500">
-            عدّلي النوع والمستوى
-            والكود من القوائم.
+            عدّل بيانات الموظف والنوع
+            والمستوى والكود.
           </p>
         </div>
 
@@ -693,7 +803,7 @@ export default function EditEmployeePage() {
               onChange={(event) =>
                 updateEmployeeType(
                   event.target
-                    .value as EmployeeCategory
+                    .value as EmployeeType
                 )
               }
               className="w-full cursor-pointer rounded-xl border border-white/10 bg-zinc-900 p-4 text-white outline-none focus:border-yellow-500"
@@ -713,39 +823,113 @@ export default function EditEmployeePage() {
               <option value="certified_leader">
                 قيادة معتمدة — CA
               </option>
+
+              <option value="administration">
+                الإدارة — S / M / F / A
+              </option>
             </select>
           </label>
 
-          <label className="block">
-            <span className="mb-2 block font-bold text-zinc-300">
-              المستوى
-            </span>
+          {form.employeeType ===
+            "administration" && (
+            <>
+              <label className="block">
+                <span className="mb-2 block font-bold text-zinc-300">
+                  المسمى الإداري
+                </span>
 
-            <select
-              value={form.level}
-              onChange={(event) =>
-                updateForm(
-                  "level",
-                  Number(
-                    event.target.value
-                  ) as LevelNumber
-                )
-              }
-              className="w-full cursor-pointer rounded-xl border border-white/10 bg-zinc-900 p-4 text-white outline-none focus:border-yellow-500"
-            >
-              {allowedLevels.map(
-                (levelNumber) => (
-                  <option
-                    key={levelNumber}
-                    value={levelNumber}
-                  >
+                <select
+                  value={
+                    form.administrationTitle
+                  }
+                  onChange={(event) =>
+                    updateAdministrationTitle(
+                      event.target
+                        .value as AdministrationTitle
+                    )
+                  }
+                  className="w-full cursor-pointer rounded-xl border border-white/10 bg-zinc-900 p-4 text-white outline-none focus:border-yellow-500"
+                >
+                  {ADMINISTRATION_ROLES.map(
+                    (role) => (
+                      <option
+                        key={role.title}
+                        value={role.title}
+                      >
+                        {role.title} — المستوى{" "}
+                        {role.level} —{" "}
+                        {role.prefix}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+
+              <div className="grid gap-3 rounded-2xl border border-yellow-500/15 bg-yellow-500/[0.06] p-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-bold text-zinc-500">
+                    المستوى المعتمد
+                  </p>
+
+                  <p className="mt-1 font-black text-yellow-400">
                     المستوى{" "}
-                    {levelNumber}
-                  </option>
-                )
-              )}
-            </select>
-          </label>
+                    {
+                      administrationRole.level
+                    }
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-zinc-500">
+                    بادئة الكود
+                  </p>
+
+                  <p
+                    dir="ltr"
+                    className="mt-1 text-right font-mono font-black text-yellow-400"
+                  >
+                    {
+                      administrationRole.prefix
+                    }
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {form.employeeType !==
+            "administration" && (
+            <label className="block">
+              <span className="mb-2 block font-bold text-zinc-300">
+                المستوى
+              </span>
+
+              <select
+                value={form.level}
+                onChange={(event) =>
+                  updateForm(
+                    "level",
+                    Number(
+                      event.target.value
+                    ) as LevelNumber
+                  )
+                }
+                className="w-full cursor-pointer rounded-xl border border-white/10 bg-zinc-900 p-4 text-white outline-none focus:border-yellow-500"
+              >
+                {allowedLevels.map(
+                  (levelNumber) => (
+                    <option
+                      key={levelNumber}
+                      value={levelNumber}
+                    >
+                      المستوى{" "}
+                      {levelNumber}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+          )}
 
           <label className="block">
             <div className="mb-2 flex items-center justify-between gap-3">
@@ -786,7 +970,7 @@ export default function EditEmployeePage() {
               {availableCodes.length ===
               0 ? (
                 <option value="">
-                  المستوى مكتمل
+                  لا يوجد كود متاح
                 </option>
               ) : (
                 availableCodes.map(
@@ -803,10 +987,9 @@ export default function EditEmployeePage() {
             </select>
           </label>
 
-          {(form.employeeType ===
-            "certified" ||
-            form.employeeType ===
-              "certified_leader") && (
+          {isCertifiedEmployeeType(
+            form.employeeType
+          ) && (
             <label className="block">
               <span className="mb-2 block font-bold text-zinc-300">
                 القطاع الأساسي
@@ -822,49 +1005,59 @@ export default function EditEmployeePage() {
                     event.target.value
                   )
                 }
-                placeholder="مثال: الشرطة أو الهلال الأحمر"
+                placeholder="مثال: الأمن العام أو الهلال الأحمر"
                 className="w-full rounded-xl border border-white/10 bg-zinc-900 p-4 text-white outline-none transition focus:border-yellow-500"
               />
             </label>
           )}
 
-          <div className="rounded-2xl border border-white/5 bg-zinc-900 p-5">
-            <h2 className="mb-4 text-xl font-bold text-yellow-400">
-              الدورات
-            </h2>
+          {form.employeeType !==
+          "administration" ? (
+            <div className="rounded-2xl border border-white/5 bg-zinc-900 p-5">
+              <h2 className="mb-4 text-xl font-bold text-yellow-400">
+                الدورات
+              </h2>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {courses.map(
-                (course) => (
-                  <label
-                    key={course.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 transition hover:border-yellow-500/20"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.employeeCourses.includes(
-                        course.name
-                      )}
-                      onChange={(
-                        event
-                      ) =>
-                        toggleCourse(
-                          course.name,
-                          event.target
-                            .checked
-                        )
-                      }
-                      className="h-5 w-5 accent-yellow-500"
-                    />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {courses.map(
+                  (course) => (
+                    <label
+                      key={course.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 transition hover:border-yellow-500/20"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.employeeCourses.includes(
+                          course.name
+                        )}
+                        onChange={(
+                          event
+                        ) =>
+                          toggleCourse(
+                            course.name,
+                            event.target
+                              .checked
+                          )
+                        }
+                        className="h-5 w-5 accent-yellow-500"
+                      />
 
-                    <span className="text-zinc-300">
-                      {course.name}
-                    </span>
-                  </label>
-                )
-              )}
+                      <span className="text-zinc-300">
+                        {course.name}
+                      </span>
+                    </label>
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-400">
+              موظف الإدارة يُعيّن حسب
+              مسماه مباشرة، ولا تظهر له
+              الدورات أو التقارير أو شروط
+              الترقية.
+            </p>
+          )}
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <button

@@ -7,6 +7,7 @@ export const permissions = {
     "promotions",
     "courses",
     "certified",
+    "agreement",
     "announcements",
     "rules",
     "violations",
@@ -21,6 +22,7 @@ export const permissions = {
     "employees",
     "courses",
     "certified",
+    "agreement",
     "announcements",
     "calendar",
     "statistics",
@@ -30,18 +32,17 @@ export const permissions = {
   visitor: [],
 } as const;
 
-export type UserRole = keyof typeof permissions;
+export type UserRole =
+  keyof typeof permissions;
 
 export function hasPermission(
-  role: string | null | undefined,
+  role: string,
   permission: string
-) {
-  if (!role) {
-    return false;
-  }
-
+): boolean {
   const rolePermissions =
-    permissions[role as UserRole] as readonly string[] | undefined;
+    permissions[
+      role as UserRole
+    ] as readonly string[] | undefined;
 
   if (!rolePermissions) {
     return false;
@@ -49,6 +50,8 @@ export function hasPermission(
 
   return (
     rolePermissions.includes("*") ||
-    rolePermissions.includes(permission)
+    rolePermissions.includes(
+      permission
+    )
   );
 }
