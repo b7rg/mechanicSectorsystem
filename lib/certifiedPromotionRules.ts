@@ -1,7 +1,3 @@
-import {
-  promotionRules,
-} from "@/lib/promotionRules";
-
 import type {
   EmployeeType,
 } from "@/lib/employeeCodes";
@@ -16,20 +12,30 @@ export type CertifiedPromotionEmployee = {
   courses?: string[];
 };
 
+/*
+  عدد أيام الحضور الفعلي المطلوبة للترقية
+  من المستوى الحالي إلى المستوى التالي.
+*/
 export const CERTIFIED_ATTENDANCE_REQUIREMENTS: Record<
   number,
   number
 > = {
-  1: 10,
-  2: 15,
-  3: 18,
-  4: 20,
+  1: 7,
+  2: 10,
+  3: 14,
+  4: 18,
   5: 25,
   6: 30,
-  7: 35,
-  8: 50,
-  9: 55,
+  7: 45,
+  8: 60,
+  9: 75,
 };
+
+const MODIFICATION_COURSE =
+  "التعديل والتزويد";
+
+const FLEET_COURSE =
+  "الأسطول";
 
 function getSafeNumber(
   value: unknown
@@ -45,32 +51,74 @@ function getSafeNumber(
     : 0;
 }
 
+function normalizeCourseName(
+  value: string
+): string {
+  const cleanedValue = value
+    .trim()
+    .replace(/\s+/g, " ");
+
+  const aliases: Record<
+    string,
+    string
+  > = {
+    "تعديل وتزويد":
+      MODIFICATION_COURSE,
+
+    "دورة التعديل والتزويد":
+      MODIFICATION_COURSE,
+
+    "اسطول":
+      FLEET_COURSE,
+
+    "الاسطول":
+      FLEET_COURSE,
+
+    "دورة الأسطول":
+      FLEET_COURSE,
+
+    "دورة الاسطول":
+      FLEET_COURSE,
+  };
+
+  return (
+    aliases[cleanedValue] ??
+    cleanedValue
+  );
+}
+
+/*
+  دورات اللاعب المعتمد فقط:
+
+  المستوى 1 و2:
+  لا توجد دورات مطلوبة.
+
+  من المستوى 3:
+  التعديل والتزويد مطلوبة.
+
+  من المستوى 5:
+  التعديل والتزويد + الأسطول مطلوبتان.
+
+  لا تدخل دورات المسؤوليات أو الإشراف
+  ضمن شروط ترقية اللاعب المعتمد.
+*/
 function getRequiredCourses(
   level: number
 ): string[] {
-  /*
-    المستويات من 1 إلى 7 تستخدم
-    دورات قطاع الميكانيك نفسها.
-
-    المستوى 8 و9 لا توجد لهما
-    دورات إضافية مسجلة حاليًا،
-    لذلك يستمران على كامل دورات
-    المستوى السابع.
-  */
-
-  const directCourses =
-    promotionRules[level]?.courses;
-
-  if (
-    Array.isArray(directCourses)
-  ) {
-    return directCourses;
+  if (level >= 5) {
+    return [
+      MODIFICATION_COURSE,
+      FLEET_COURSE,
+    ];
   }
 
-  return (
-    promotionRules[7]?.courses ??
-    []
-  );
+  if (level >= 3) {
+    return [
+      MODIFICATION_COURSE,
+    ];
+  }
+
+  return [];
 }
 
 export function isCertifiedEmployee(
@@ -117,14 +165,21 @@ export function getCertifiedPromotionEligibility(
     Array.isArray(
       employee.courses
     )
-      ? employee.courses.filter(
-          (
-            course
-          ): course is string =>
-            typeof course ===
-            "string"
-        )
+      ? employee.courses
+          .filter(
+            (
+              course
+            ): course is string =>
+              typeof course ===
+              "string"
+          )
+          .map(
+            normalizeCourseName
+          )
       : [];
+
+  const normalizedEmployeeCourses =
+    new Set(employeeCourses);
 
   if (!certified) {
     return {
@@ -154,6 +209,10 @@ export function getCertifiedPromotionEligibility(
       completedCourses: 0,
 
       coursesProgress: 0,
+
+      attendanceComplete: false,
+
+      coursesComplete: false,
     };
   }
 
@@ -185,6 +244,10 @@ export function getCertifiedPromotionEligibility(
       completedCourses: 0,
 
       coursesProgress: 100,
+
+      attendanceComplete: true,
+
+      coursesComplete: true,
     };
   }
 
@@ -199,8 +262,8 @@ export function getCertifiedPromotionEligibility(
   const missingCourses =
     requiredCourses.filter(
       (course) =>
-        !employeeCourses.includes(
-          course
+        !normalizedEmployeeCourses.has(
+          normalizeCourseName(course)
         )
     );
 
@@ -233,15 +296,20 @@ export function getCertifiedPromotionEligibility(
         );
 
   /*
-    نصف النسبة لأيام الحضور
-    ونصفها للدورات.
-  */
+    في المستويات التي لا تتطلب دورات،
+    تعتمد النسبة على الحضور فقط.
 
-  const progress = Math.round(
-    (daysProgress +
-      coursesProgress) /
-      2
-  );
+    عند وجود دورات مطلوبة:
+    نصف النسبة للحضور ونصفها للدورات.
+  */
+  const progress =
+    requiredCourses.length === 0
+      ? daysProgress
+      : Math.round(
+          (daysProgress +
+            coursesProgress) /
+            2
+        );
 
   const attendanceComplete =
     attendanceDays >=
