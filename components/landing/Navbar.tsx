@@ -42,6 +42,10 @@ const links = [
     href: "/calendar",
   },
   {
+    title: "الاتفاقيات",
+    href: "/agreement",
+  },
+  {
     title: "الخريطة الميدانية",
     href: "/map",
   },
@@ -67,7 +71,7 @@ export default function Navbar() {
       }}
       className="fixed inset-x-0 top-0 z-50"
     >
-      <div className="relative mx-auto mt-6 w-[94%] max-w-[1400px]">
+      <div className="relative mx-auto mt-6 w-[94%] max-w-[1500px]">
         <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/60 px-5 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl md:px-7">
           <Link
             href="/"
@@ -91,7 +95,7 @@ export default function Navbar() {
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-5 xl:flex">
+          <nav className="hidden items-center gap-4 xl:flex">
             {links.map((item) => (
               <Link
                 key={item.title}
