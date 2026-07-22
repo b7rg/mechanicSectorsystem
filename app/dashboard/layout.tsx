@@ -26,7 +26,7 @@ export default function DashboardLayout({
   preload="auto"
   className="pointer-events-none fixed inset-0 -z-30 h-screen w-screen object-cover opacity-60"
 >
-  <source src="/videos/hero.mp4" type="video/mp4" />
+  <source src="/videos/hero-new.mp4" type="video/mp4" />
 </video>
 
 {/* طبقة داكنة فوق الفيديو */}

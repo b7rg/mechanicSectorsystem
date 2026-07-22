@@ -10,7 +10,7 @@ export default function VideoBackground() {
         className="absolute inset-0 h-full w-full object-cover"
       >
         <source
-          src="/videos/hero.mp4"
+          src="/videos/hero-new.mp4"
           type="video/mp4"
         />
       </video>
