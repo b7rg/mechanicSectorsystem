@@ -44,6 +44,7 @@ const links = [
   {
     title: "الاتفاقيات",
     href: "/agreement",
+    highlighted: true,
   },
   {
     title: "الخريطة الميدانية",
@@ -71,7 +72,7 @@ export default function Navbar() {
       }}
       className="fixed inset-x-0 top-0 z-50"
     >
-      <div className="relative mx-auto mt-6 w-[94%] max-w-[1500px]">
+      <div className="relative mx-auto mt-6 w-[96%] max-w-[1600px]">
         <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/60 px-5 py-3 shadow-2xl shadow-black/30 backdrop-blur-2xl md:px-7">
           <Link
             href="/"
@@ -95,12 +96,16 @@ export default function Navbar() {
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-4 xl:flex">
+          <nav className="hidden items-center gap-3 xl:flex">
             {links.map((item) => (
               <Link
                 key={item.title}
                 href={item.href}
-                className="whitespace-nowrap text-sm font-medium text-zinc-300 transition hover:text-yellow-400"
+                className={
+                  item.highlighted
+                    ? "whitespace-nowrap rounded-full border border-yellow-500/25 bg-yellow-500/10 px-3 py-2 text-sm font-black text-yellow-400 transition hover:bg-yellow-500 hover:text-black"
+                    : "whitespace-nowrap text-sm font-medium text-zinc-300 transition hover:text-yellow-400"
+                }
               >
                 {item.title}
               </Link>
@@ -170,7 +175,11 @@ export default function Navbar() {
                     onClick={() =>
                       setMenuOpen(false)
                     }
-                    className="rounded-2xl border border-transparent px-5 py-4 font-bold text-zinc-300 transition hover:border-yellow-500/20 hover:bg-yellow-500/10 hover:text-yellow-400"
+                    className={
+                      item.highlighted
+                        ? "rounded-2xl border border-yellow-500/25 bg-yellow-500/10 px-5 py-4 font-black text-yellow-400 transition hover:bg-yellow-500 hover:text-black"
+                        : "rounded-2xl border border-transparent px-5 py-4 font-bold text-zinc-300 transition hover:border-yellow-500/20 hover:bg-yellow-500/10 hover:text-yellow-400"
+                    }
                   >
                     {item.title}
                   </Link>
