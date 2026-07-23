@@ -38,8 +38,7 @@ export type CodePrefix =
   | "S"
   | "M"
   | "F"
-  | "A"
-  | "A+";
+  | "A";
 
 export type EmployeeRecord = {
   id: string;
@@ -173,7 +172,7 @@ export const EMPLOYEE_TYPE_LABELS: Record<
   main: "موظف أساسي",
   leader: "قيادة",
   certified: "لاعب معتمد",
-  certified_leader: "مسؤولو المعتمد",
+  certified_leader: "قيادة معتمدة",
   administration: "الإدارة",
 };
 
@@ -333,8 +332,7 @@ export function getLevelRangeForEmployeeType(
 
 export function getCodesForLevel(
   employeeType: EmployeeType,
-  level: LevelNumber,
-  administrationTitle?: AdministrationTitle
+  level: LevelNumber
 ): string[] {
   const range =
     getLevelRangeForEmployeeType(
@@ -348,9 +346,8 @@ export function getCodesForLevel(
 
   const prefix =
     employeeType === "administration"
-      ? getPrefixForEmployeeType(
-          employeeType,
-          administrationTitle
+      ? getAdministrationPrefixForLevel(
+          level
         )
       : getPrefixForEmployeeType(
           employeeType
@@ -419,7 +416,6 @@ export function parseEmployeeCode(
     "M",
     "F",
     "A",
-    "A+",
   ];
 
   const prefix: CodePrefix =
@@ -474,10 +470,7 @@ export function getLevelFromCode(
     return 6;
   }
 
-  if (
-    prefix === "A" ||
-    prefix === "A+"
-  ) {
+  if (prefix === "A") {
     return 7;
   }
 

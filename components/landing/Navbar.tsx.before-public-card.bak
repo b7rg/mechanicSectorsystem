@@ -54,10 +54,6 @@ const links = [
     title: "ÙˆØ±Ø´Ø© Ø¹Ù„ÙŠ Ø­Ù†Ø´",
     href: "/workshop",
   },
-  {
-    title: "بطاقتي",
-    href: "/employee-card",
-  },
 ];
 
 export default function Navbar() {

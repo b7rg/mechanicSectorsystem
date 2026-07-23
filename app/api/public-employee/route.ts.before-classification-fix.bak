@@ -8,53 +8,63 @@ import { getAdminDb } from "@/lib/firebaseAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function text(value: unknown) {
+type EmployeeReports = {
+  fieldGuide: number;
+  fieldSupervisor: number;
+  generalSupervisor: number;
+  recruitment: number;
+};
+
+function cleanText(value: unknown) {
   return typeof value === "string"
     ? value.trim()
     : "";
 }
 
-function number(value: unknown) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed)
-    ? Math.max(0, parsed)
+function cleanNumber(value: unknown) {
+  const numberValue = Number(value ?? 0);
+
+  return Number.isFinite(numberValue)
+    ? Math.max(0, numberValue)
     : 0;
 }
 
-function cleanEmployeeName(value: unknown) {
-  return text(value)
-    .replace(
-      /\s*\[(?:G|C|CA|S|M|F|A\+?|A)-?\d+\]\s*$/i,
-      ""
-    )
-    .trim();
+function getWarningsCount(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+
+  return cleanNumber(value);
 }
 
-function statusOf(
+function getStatus(
   employee: Record<string, unknown>
 ) {
-  const raw = text(employee.status);
+  const rawStatus = cleanText(
+    employee.status
+  );
+
   const leave =
     employee.leave &&
     typeof employee.leave === "object"
-      ? (employee.leave as Record<
+      ? employee.leave as Record<
           string,
           unknown
-        >)
+        >
       : null;
 
   if (
     leave?.active === true ||
-    raw === "leave" ||
-    raw === "إجازة" ||
-    raw === "في إجازة"
+    rawStatus === "leave" ||
+    rawStatus === "إجازة" ||
+    rawStatus === "في إجازة"
   ) {
     return "leave";
   }
 
   if (
-    raw === "suspended" ||
-    raw === "موقوف"
+    rawStatus === "suspended" ||
+    rawStatus === "موقوف"
   ) {
     return "suspended";
   }
@@ -62,13 +72,16 @@ function statusOf(
   return "active";
 }
 
-function classificationOf(
+function getEmployeeClassification(
   employeeType: string,
   fullCode: string,
   administrationTitle: string
 ) {
   const normalizedCode =
-    fullCode.toUpperCase();
+    fullCode.trim().toUpperCase();
+
+  const normalizedTitle =
+    administrationTitle.trim();
 
   if (
     employeeType ===
@@ -85,15 +98,17 @@ function classificationOf(
     employeeType ===
     "administration"
   ) {
-    if (
+    const isSeniorAdministration =
       normalizedCode.startsWith("A+") ||
-      administrationTitle ===
-        "الإدارة العليا A+"
-    ) {
-      return "الإدارة العليا A+";
-    }
+      normalizedCode.startsWith("A-") ||
+      normalizedTitle.includes("أدمن") ||
+      normalizedTitle.includes(
+        "الإدارة العليا"
+      );
 
-    return "الإدارة";
+    return isSeniorAdministration
+      ? "الإدارة العليا A+"
+      : "الإدارة";
   }
 
   if (employeeType === "leader") {
@@ -103,7 +118,9 @@ function classificationOf(
   return "موظف أساسي";
 }
 
-function isoDate(value: unknown) {
+function timestampToISOString(
+  value: unknown
+) {
   if (
     value &&
     typeof value === "object" &&
@@ -126,9 +143,9 @@ export async function POST(
       .json()
       .catch(() => null);
 
-    const discordId = text(
+    const discordId = cleanText(
       body?.discordId
-    ).replace(/\D/g, "");
+    );
 
     if (!/^\d{15,25}$/.test(discordId)) {
       return NextResponse.json(
@@ -137,7 +154,12 @@ export async function POST(
           message:
             "ألصق كوبي آيدي ديسكورد صحيح.",
         },
-        { status: 400 }
+        {
+          status: 400,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
       );
     }
 
@@ -150,7 +172,7 @@ export async function POST(
         "==",
         discordId
       )
-      .limit(1)
+      .limit(2)
       .get();
 
     if (snapshot.empty) {
@@ -160,12 +182,20 @@ export async function POST(
           message:
             "ما لقينا بطاقة مرتبطة بهذا الآيدي.",
         },
-        { status: 404 }
+        {
+          status: 404,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
       );
     }
 
+    const employeeDocument =
+      snapshot.docs[0];
+
     const employee =
-      snapshot.docs[0].data() as Record<
+      employeeDocument.data() as Record<
         string,
         unknown
       >;
@@ -173,50 +203,38 @@ export async function POST(
     const reportsSource =
       employee.reports &&
       typeof employee.reports === "object"
-        ? (employee.reports as Record<
+        ? employee.reports as Record<
             string,
             unknown
-          >)
+          >
         : {};
 
-    const reports = {
-      fieldGuide: number(
+    const reports: EmployeeReports = {
+      fieldGuide: cleanNumber(
         reportsSource.fieldGuide
       ),
-      fieldSupervisor: number(
+      fieldSupervisor: cleanNumber(
         reportsSource.fieldSupervisor
       ),
-      generalSupervisor: number(
+      generalSupervisor: cleanNumber(
         reportsSource.generalSupervisor
       ),
-      recruitment: number(
+      recruitment: cleanNumber(
         reportsSource.recruitment
       ),
     };
 
-    const fullCode =
-      text(employee.fullCode) ||
-      text(employee.rank) ||
-      "غير محدد";
-
     const employeeType =
-      text(employee.employeeType) ||
-      (fullCode.startsWith("CA-")
-        ? "certified_leader"
-        : fullCode.startsWith("C-")
-          ? "certified"
-          : "main");
+      cleanText(
+        employee.employeeType
+      ) || "main";
 
-    const administrationTitle = text(
-      employee.administrationTitle
-    );
-
-    const level = Math.max(
-      1,
-      Math.min(
-        10,
+    const level = Math.min(
+      10,
+      Math.max(
+        1,
         Math.trunc(
-          number(employee.level) || 1
+          cleanNumber(employee.level) || 1
         )
       )
     );
@@ -235,59 +253,73 @@ export async function POST(
             course.trim()
           )
           .filter(Boolean)
+          .slice(0, 30)
       : [];
 
-    const warningsCount =
-      Array.isArray(employee.warnings)
-        ? employee.warnings.length
-        : number(employee.warnings);
+    const fullCode =
+      cleanText(
+        employee.fullCode
+      ) ||
+      cleanText(employee.rank) ||
+      "غير محدد";
 
     return NextResponse.json(
       {
         success: true,
         employee: {
           name:
-            cleanEmployeeName(
-              employee.name
-            ) || "موظف القطاع",
+            cleanText(employee.name) ||
+            "موظف القطاع",
           discordId,
           fullCode,
           level,
           employeeType,
-          classification:
-            classificationOf(
+          employeeTypeLabel:
+            getEmployeeClassification(
               employeeType,
               fullCode,
-              administrationTitle
+              cleanText(
+                employee.administrationTitle
+              )
             ),
-          mainSector: text(
-            employee.mainSector
-          ),
-          administrationTitle,
-          status: statusOf(employee),
+          mainSector:
+            cleanText(
+              employee.mainSector
+            ),
+          administrationTitle:
+            cleanText(
+              employee.administrationTitle
+            ),
+          status:
+            getStatus(employee),
+          courses,
           reports,
           reportsTotal:
             reports.fieldGuide +
             reports.fieldSupervisor +
             reports.generalSupervisor +
             reports.recruitment,
-          courses,
-          warningsCount,
-          hiredAt: isoDate(
-            employee.hiredAt ??
-              employee.createdAt
-          ),
+          warningsCount:
+            getWarningsCount(
+              employee.warnings
+            ),
+          hiredAt:
+            timestampToISOString(
+              employee.hiredAt ??
+                employee.createdAt
+            ),
         },
       },
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store, max-age=0",
         },
       }
     );
   } catch (error) {
     console.error(
-      "Public employee card error:",
+      "Public employee lookup failed:",
       error
     );
 
@@ -295,9 +327,14 @@ export async function POST(
       {
         success: false,
         message:
-          "تعذر عرض البطاقة حاليًا.",
+          "تعذر عرض البطاقة حاليًا. حاول مرة ثانية.",
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   }
 }

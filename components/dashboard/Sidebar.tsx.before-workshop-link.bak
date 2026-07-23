@@ -140,12 +140,6 @@ const navigationItems: NavigationItem[] = [
     icon: KeyRound,
     ownerOnly: true,
   },
-  {
-    label: "ÙˆØ±Ø´Ø© Ø¹Ù„ÙŠ Ø­Ù†Ø´",
-    href: "/workshop",
-    permission: "dashboard",
-    icon: Wrench,
-  },
 ];
 
 const roleLabels: Record<
