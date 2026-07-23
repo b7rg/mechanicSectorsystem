@@ -172,7 +172,7 @@ export const EMPLOYEE_TYPE_LABELS: Record<
   main: "موظف أساسي",
   leader: "قيادة",
   certified: "لاعب معتمد",
-  certified_leader: "قيادة معتمدة",
+  certified_leader: "مسؤولو المعتمد",
   administration: "الإدارة",
 };
 
