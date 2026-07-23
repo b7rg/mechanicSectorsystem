@@ -1,3 +1,4 @@
+import WorkshopLauncher from "@/components/workshop/WorkshopLauncher";
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Arabic, Space_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({
         className={`${arabicFont.variable} ${englishFont.variable} bg-[#0B0B0B] text-white`}
       >
         {children}
+              <WorkshopLauncher />
       </body>
     </html>
   );
