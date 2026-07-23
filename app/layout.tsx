@@ -26,12 +26,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body
         className={`${arabicFont.variable} ${englishFont.variable} bg-[#0B0B0B] text-white`}
       >
         {children}
-              <WorkshopLauncher />
+        <WorkshopLauncher />
       </body>
     </html>
   );

@@ -42,6 +42,10 @@ const links = [
     href: "/calendar",
   },
   {
+  title: "البحث عن موظف",
+  href: "/employee-card",
+},
+  {
     title: "الاتفاقيات",
     href: "/agreement",
     highlighted: true,
@@ -49,10 +53,6 @@ const links = [
   {
     title: "الخريطة الميدانية",
     href: "/map",
-  },
-  {
-    title: "ÙˆØ±Ø´Ø© Ø¹Ù„ÙŠ Ø­Ù†Ø´",
-    href: "/workshop",
   },
   {
     title: "بطاقتي",
