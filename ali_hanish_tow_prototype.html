@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تحدي علي حنش — نموذج السطحة</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(7, 9, 12, .72);
+      --line: rgba(255,255,255,.10);
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --accent: #d7dbe2;
+      --danger: #dc2638;
+      --ok: #36d399;
+    }
+    * { box-sizing: border-box; }
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#050608; font-family: Tahoma, Arial, sans-serif; }
+    canvas { display:block; width:100%; height:100%; touch-action:none; cursor:crosshair; }
+    .hud {
+      position:fixed; inset:18px 18px auto 18px; z-index:4;
+      display:flex; justify-content:space-between; gap:14px; pointer-events:none;
+    }
+    .panel {
+      min-width:min(460px, calc(100vw - 36px));
+      padding:16px 18px; border:1px solid var(--line); border-radius:22px;
+      background:linear-gradient(145deg, rgba(18,20,24,.82), rgba(3,4,6,.70));
+      box-shadow:0 24px 70px rgba(0,0,0,.45); backdrop-filter: blur(18px);
+    }
+    .brand { font-size:11px; letter-spacing:.28em; color:#8d939e; font-weight:800; }
+    .title { margin-top:6px; font-size:20px; font-weight:900; color:var(--text); }
+    .objective { margin-top:6px; color:#c7cad1; font-size:13px; line-height:1.8; }
+    .status-row { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    .chip { padding:8px 11px; border:1px solid var(--line); border-radius:13px; background:rgba(255,255,255,.035); color:#d4d4d8; font-size:12px; font-weight:800; }
+    .chip b { color:white; }
+    .help {
+      align-self:flex-start; min-width:auto; padding:12px 14px; border:1px solid var(--line); border-radius:18px;
+      background:rgba(5,6,8,.62); color:#aeb3bd; font-size:11px; line-height:1.8; backdrop-filter:blur(14px);
+    }
+    .help kbd { display:inline-grid; place-items:center; min-width:24px; height:24px; margin:0 2px; padding:0 6px; border-radius:7px; border:1px solid rgba(255,255,255,.15); background:#17191e; color:#fff; font:700 11px Tahoma; box-shadow: inset 0 -2px rgba(0,0,0,.35); }
+    .toast {
+      position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:5; pointer-events:none;
+      padding:12px 18px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background:rgba(4,5,7,.76);
+      color:#e6e7eb; font-weight:900; font-size:13px; opacity:0; transition:opacity .2s, transform .2s; backdrop-filter:blur(15px);
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
+    .vignette { position:fixed; inset:0; z-index:2; pointer-events:none; box-shadow:inset 0 0 160px rgba(0,0,0,.78); }
+    .grain { position:fixed; inset:-20%; z-index:2; opacity:.035; pointer-events:none; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation:grain .22s steps(2) infinite; }
+    @keyframes grain { 0%{transform:translate(0,0)} 25%{transform:translate(2%,-1%)} 50%{transform:translate(-1%,2%)} 75%{transform:translate(1%,1%)} 100%{transform:translate(0,0)} }
+    @media (max-width:760px){ .hud{inset:10px; flex-direction:column}.panel{min-width:0}.help{display:none}.title{font-size:17px}.objective{font-size:12px} }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <div class="panel">
+      <div class="brand">MSS RECOVERY UNIT</div>
+      <div class="title">تحدي علي حنش: مهمة الإنقاذ</div>
+      <div class="objective" id="objective">قد السطحة إلى المركبة المعطلة ووقف خلفها بمحاذاة هادئة.</div>
+      <div class="status-row">
+        <div class="chip">السرعة: <b id="speed">0</b> كم/س</div>
+        <div class="chip">المسافة: <b id="distance">0</b> م</div>
+        <div class="chip">الحالة: <b id="state">في الطريق</b></div>
+      </div>
+    </div>
+    <div class="help">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> قيادة<br>
+      <kbd>Space</kbd> فرامل &nbsp; <kbd>E</kbd> تثبيت الموقع<br>
+      <kbd>R</kbd> إنزال/رفع السطح &nbsp; <kbd>F</kbd> سحب الونش<br>
+      اسحب الخطاف بالماوس إلى صدام المركبة
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="vignette"></div><div class="grain"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha:false });
+  const elObjective = document.getElementById('objective');
+  const elSpeed = document.getElementById('speed');
+  const elDistance = document.getElementById('distance');
+  const elState = document.getElementById('state');
+  const toast = document.getElementById('toast');
+
+  let DPR = Math.min(2, window.devicePixelRatio || 1);
+  let vw = innerWidth, vh = innerHeight;
+  function resize(){
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    vw = innerWidth; vh = innerHeight;
+    canvas.width = Math.round(vw * DPR); canvas.height = Math.round(vh * DPR);
+    canvas.style.width = vw+'px'; canvas.style.height = vh+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  addEventListener('resize', resize); resize();
+
+  const keys = new Set();
+  addEventListener('keydown', e => {
+    keys.add(e.code);
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+    if (!e.repeat) {
+      if (e.code === 'KeyE') lockPosition();
+      if (e.code === 'KeyR') toggleRamp();
+    }
+  });
+  addEventListener('keyup', e => keys.delete(e.code));
+
+  const TAU = Math.PI * 2;
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  const lerp = (a,b,t) => a + (b-a)*t;
+  const smooth = (rate,dt) => 1 - Math.exp(-rate*dt);
+  const dist = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+  const rotate = (x,y,a) => ({x:x*Math.cos(a)-y*Math.sin(a), y:x*Math.sin(a)+y*Math.cos(a)});
+
+  const world = { length: 3100, roadY: 0, roadW: 590 };
+  const truck = {
+    x: 300, y: 90, angle:0, speed:0, steer:0,
+    length:250, width:104, maxForward:420, maxReverse:150,
+    ramp:0, rampTarget:0, locked:false
+  };
+  const broken = { x:2200, y:-55, angle:0.015, loaded:0, attached:false };
+  const camera = { x:truck.x, y:truck.y, zoom:1.0, shake:0 };
+  let stage = 0;
+  let hook = { x:0, y:0, dragging:false, attached:false };
+  let particles = [];
+  let last = performance.now();
+  let toastTimer = 0;
+
+  function showToast(text){
+    toast.textContent = text; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(()=>toast.classList.remove('show'), 1600);
+  }
+
+  function objective(text,state){
+    elObjective.textContent = text; elState.textContent = state;
+  }
+
+  function getTruckPoint(localX, localY){
+    const p = rotate(localX,localY,truck.angle);
+    return {x:truck.x+p.x,y:truck.y+p.y};
+  }
+  function bedRear(){ return getTruckPoint(-126,0); }
+  function bedCenter(){ return getTruckPoint(-24,0); }
+  function brokenAnchor(){
+    const p = rotate(-54,0,broken.angle);
+    return {x:broken.x+p.x,y:broken.y+p.y};
+  }
+  function resetHook(){ const p=bedRear(); hook.x=p.x; hook.y=p.y; }
+  resetHook();
+
+  function lockPosition(){
+    if (stage !== 0) return;
+    const d = dist(bedRear(), brokenAnchor());
+    const angleErr = Math.abs(Math.atan2(Math.sin(truck.angle-broken.angle), Math.cos(truck.angle-broken.angle)));
+    if (d < 260 && Math.abs(truck.speed)<22 && angleErr<0.32) {
+      truck.locked=true; truck.speed=0; stage=1; resetHook();
+      objective('أنزل سطح السطحة بالضغط على R.', 'تمركز ممتاز');
+      showToast('تم تثبيت موقع السطحة');
+    } else {
+      showToast(d>=260 ? 'قرّب أكثر من المركبة' : angleErr>=0.32 ? 'عدّل زاوية السطحة' : 'خفف السرعة أولاً');
+    }
+  }
+
+  function toggleRamp(){
+    if (stage===1) {
+      truck.rampTarget=1; stage=2;
+      objective('اسحب خطاف الونش بالماوس وثبته في صدام المركبة.', 'توصيل الخطاف');
+      showToast('جاري إنزال السطح');
+    } else if (stage===4 && broken.loaded>0.94) {
+      truck.rampTarget=0; stage=5;
+      objective('ارفع السطح بالكامل لإكمال المهمة.', 'تثبيت الحمولة');
+    }
+  }
+
+  function worldToScreen(p){
+    return { x:(p.x-camera.x)*camera.zoom+vw/2, y:(p.y-camera.y)*camera.zoom+vh/2 };
+  }
+  function screenToWorld(x,y){
+    return { x:(x-vw/2)/camera.zoom+camera.x, y:(y-vh/2)/camera.zoom+camera.y };
+  }
+
+  canvas.addEventListener('pointerdown', e=>{
+    if (stage!==2 || truck.ramp<.78) return;
+    const p=worldToScreen(hook);
+    if (Math.hypot(e.clientX-p.x,e.clientY-p.y)<42) {
+      hook.dragging=true; canvas.setPointerCapture(e.pointerId);
+    }
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if (!hook.dragging) return;
+    const p=screenToWorld(e.clientX,e.clientY);
+    const origin=bedRear();
+    const dx=p.x-origin.x, dy=p.y-origin.y;
+    const max=520, d=Math.hypot(dx,dy)||1;
+    hook.x=origin.x+dx*Math.min(1,max/d); hook.y=origin.y+dy*Math.min(1,max/d);
+  });
+  function releaseHook(e){
+    if (!hook.dragging) return;
+    hook.dragging=false;
+    try{canvas.releasePointerCapture(e.pointerId);}catch{}
+    const a=brokenAnchor();
+    if (dist(hook,a)<75) {
+      hook.attached=true; broken.attached=true; stage=3; hook.x=a.x;hook.y=a.y;
+      objective('اضغط باستمرار على F لسحب المركبة فوق السطحة.', 'تشغيل الونش');
+      showToast('تم تثبيت الخطاف');
+    } else { resetHook(); showToast('ثبت الخطاف في نقطة الصدام'); }
+  }
+  canvas.addEventListener('pointerup',releaseHook);
+  canvas.addEventListener('pointercancel',releaseHook);
+
+  function update(dt){
+    const up = keys.has('KeyW')||keys.has('ArrowUp');
+    const down = keys.has('KeyS')||keys.has('ArrowDown');
+    const left = keys.has('KeyA')||keys.has('ArrowLeft');
+    const right = keys.has('KeyD')||keys.has('ArrowRight');
+    const braking = keys.has('Space');
+
+    if (!truck.locked) {
+      let accel=0;
+      if (up) accel += 255;
+      if (down) accel -= 210;
+      if (!up&&!down) accel += -truck.speed*0.72;
+      if (braking) accel += -truck.speed*4.6;
+      truck.speed += accel*dt;
+      truck.speed = clamp(truck.speed,-truck.maxReverse,truck.maxForward);
+
+      const steerTarget=(right?1:0)-(left?1:0);
+      truck.steer=lerp(truck.steer,steerTarget,smooth(8,dt));
+      const steerStrength = clamp(Math.abs(truck.speed)/135,0,.95);
+      truck.angle += truck.steer*steerStrength*(truck.speed>=0?1:-1)*1.32*dt;
+      truck.x += Math.cos(truck.angle)*truck.speed*dt;
+      truck.y += Math.sin(truck.angle)*truck.speed*dt;
+
+      const roadLimit=world.roadW*.5-54;
+      if (Math.abs(truck.y)>roadLimit) {
+        truck.y=clamp(truck.y,-roadLimit,roadLimit);
+        truck.speed*=.91; camera.shake=Math.max(camera.shake,3.5);
+      }
+      truck.x=clamp(truck.x,40,world.length-80);
+    }
+
+    truck.ramp=lerp(truck.ramp,truck.rampTarget,smooth(3.4,dt));
+
+    if (stage===3 && keys.has('KeyF') && truck.ramp>.82) {
+      stage=4;
+      objective('استمر بالضغط على F حتى تستقر المركبة بالكامل.', 'سحب المركبة');
+    }
+    if (stage===4 && keys.has('KeyF')) {
+      broken.loaded=clamp(broken.loaded+dt*.17,0,1);
+      const rear=bedRear(), center=bedCenter();
+      const t=broken.loaded;
+      broken.x=lerp(broken.x, lerp(rear.x,center.x,t), smooth(2.2,dt));
+      broken.y=lerp(broken.y, lerp(rear.y,center.y,t), smooth(2.2,dt));
+      broken.angle=lerp(broken.angle,truck.angle,smooth(3.2,dt));
+      const a=brokenAnchor(); hook.x=a.x;hook.y=a.y;
+      if (broken.loaded>.96) {
+        broken.loaded=1; stage=4;
+        objective('المركبة فوق السطح. اضغط R لرفع السطح وتثبيت الحمولة.', 'جاهز للرفع');
+      }
+    }
+    if (stage===5 && truck.ramp<.04) {
+      stage=6;
+      objective('تمت عملية الإنقاذ بنجاح. قيادة نظيفة وتحميل مضبوط.', 'المهمة مكتملة');
+      showToast('تم إنقاذ المركبة بنجاح');
+    }
+
+    if (!hook.dragging && !hook.attached) resetHook();
+
+    const desiredZoom = stage>=1 ? .92 : clamp(1.06-Math.abs(truck.speed)/1500,.82,1.04);
+    camera.zoom=lerp(camera.zoom,desiredZoom,smooth(2.6,dt));
+    const focus = stage>=1 ? {x:lerp(truck.x,broken.x,.46),y:lerp(truck.y,broken.y,.46)} : {
+      x:truck.x+Math.cos(truck.angle)*150,
+      y:truck.y+Math.sin(truck.angle)*150
+    };
+    camera.x=lerp(camera.x,focus.x,smooth(3.8,dt));
+    camera.y=lerp(camera.y,focus.y,smooth(3.8,dt));
+    camera.shake=lerp(camera.shake,0,smooth(9,dt));
+
+    if (Math.abs(truck.speed)>12 && Math.random()<dt*16) {
+      const p=getTruckPoint(-115,(Math.random()-.5)*62);
+      particles.push({x:p.x,y:p.y,vx:-Math.cos(truck.angle)*30+(Math.random()-.5)*18,vy:-Math.sin(truck.angle)*30+(Math.random()-.5)*18,life:.7,size:3+Math.random()*5});
+    }
+    particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;p.size+=dt*5;});
+    particles=particles.filter(p=>p.life>0);
+
+    elSpeed.textContent=Math.round(Math.abs(truck.speed)*.18);
+    elDistance.textContent=Math.max(0,Math.round(dist(bedRear(),brokenAnchor())*.08));
+  }
+
+  function roundedRect(x,y,w,h,r){
+    const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.roundRect(x,y,w,h,rr);
+  }
+  function drawRotated(x,y,a,fn){ ctx.save();ctx.translate(x,y);ctx.rotate(a);fn();ctx.restore(); }
+
+  function drawRoad(){
+    ctx.fillStyle='#0b0d10';ctx.fillRect(-500,-1100,world.length+1000,2200);
+    ctx.fillStyle='#171a1f';ctx.fillRect(-500,-world.roadW/2,world.length+1000,world.roadW);
+    const grd=ctx.createLinearGradient(0,-world.roadW/2,0,world.roadW/2);
+    grd.addColorStop(0,'rgba(255,255,255,.025)');grd.addColorStop(.5,'rgba(255,255,255,0)');grd.addColorStop(1,'rgba(255,255,255,.018)');
+    ctx.fillStyle=grd;ctx.fillRect(-500,-world.roadW/2,world.length+1000,world.roadW);
+
+    ctx.strokeStyle='rgba(230,232,236,.26)';ctx.lineWidth=5;ctx.setLineDash([42,38]);
+    for (const y of [-world.roadW/6,world.roadW/6]){ctx.beginPath();ctx.moveTo(-500,y);ctx.lineTo(world.length+500,y);ctx.stroke();}
+    ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(220,225,232,.42)';ctx.lineWidth=4;
+    for(const y of [-world.roadW/2+22,world.roadW/2-22]){ctx.beginPath();ctx.moveTo(-500,y);ctx.lineTo(world.length+500,y);ctx.stroke();}
+
+    // asphalt seams and cinematic reflections
+    ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=2;
+    for(let x=-400;x<world.length+400;x+=170){ctx.beginPath();ctx.moveTo(x,-world.roadW/2);ctx.lineTo(x+35,world.roadW/2);ctx.stroke();}
+
+    // cones near disabled car
+    for(const [x,y] of [[2030,-220],[2140,-220],[2290,-220]]){
+      ctx.save();ctx.translate(x,y);ctx.fillStyle='#16191d';ctx.fillRect(-17,14,34,8);ctx.fillStyle='#b54a2b';ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(-12,15);ctx.lineTo(12,15);ctx.closePath();ctx.fill();ctx.fillStyle='#d8d9dc';ctx.fillRect(-8,-2,16,5);ctx.restore();
+    }
+  }
+
+  function drawCar(car, brokenMode=false){
+    drawRotated(car.x,car.y,car.angle,()=>{
+      ctx.shadowColor='rgba(0,0,0,.65)';ctx.shadowBlur=20;ctx.shadowOffsetY=9;
+      ctx.fillStyle='#07090c';roundedRect(-86,-47,172,94,28);ctx.fill();ctx.shadowBlur=0;
+      ctx.fillStyle=brokenMode?'#7d1723':'#27313f';roundedRect(-82,-43,164,86,26);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.11)';roundedRect(-32,-35,68,70,18);ctx.fill();
+      ctx.fillStyle='#11151b';roundedRect(-18,-31,43,62,13);ctx.fill();
+      ctx.fillStyle='#050608';for(const y of [-46,46]){roundedRect(-52,y-6,34,12,4);ctx.fill();roundedRect(30,y-6,34,12,4);ctx.fill();}
+      ctx.fillStyle=brokenMode?'#ff3348':'#dde6f4';for(const y of [-27,27]){ctx.beginPath();ctx.arc(72,y,5,0,TAU);ctx.fill();}
+      if(brokenMode){ctx.fillStyle='#e1e3e7';ctx.fillRect(-88,-18,5,36);}
+    });
+  }
+
+  function drawTruck(){
+    drawRotated(truck.x,truck.y,truck.angle,()=>{
+      // headlight beams
+      const beam=ctx.createLinearGradient(80,0,390,0);beam.addColorStop(0,'rgba(230,236,245,.13)');beam.addColorStop(1,'rgba(230,236,245,0)');
+      ctx.fillStyle=beam;ctx.beginPath();ctx.moveTo(82,-38);ctx.lineTo(390,-112);ctx.lineTo(390,112);ctx.lineTo(82,38);ctx.closePath();ctx.fill();
+
+      ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=24;ctx.shadowOffsetY=10;
+      ctx.fillStyle='#06080b';roundedRect(-142,-59,284,118,25);ctx.fill();ctx.shadowBlur=0;
+      // flatbed
+      ctx.fillStyle='#2a2e35';roundedRect(-145,-55,187,110,18);ctx.fill();
+      ctx.strokeStyle='rgba(218,222,228,.28)';ctx.lineWidth=3;roundedRect(-140,-49,175,98,14);ctx.stroke();
+      for(let x=-130;x<28;x+=21){ctx.strokeStyle='rgba(255,255,255,.08)';ctx.beginPath();ctx.moveTo(x,-45);ctx.lineTo(x,45);ctx.stroke();}
+      // ramp extension
+      if(truck.ramp>.02){
+        ctx.save();ctx.translate(-141,0);ctx.rotate(-truck.ramp*.16);
+        ctx.fillStyle='#24282e';roundedRect(-115,-48,115,96,12);ctx.fill();
+        ctx.strokeStyle='rgba(220,224,230,.25)';ctx.stroke();ctx.restore();
+      }
+      // cabin
+      const cab=ctx.createLinearGradient(45,-45,137,45);cab.addColorStop(0,'#444d5b');cab.addColorStop(.45,'#252c35');cab.addColorStop(1,'#11161d');
+      ctx.fillStyle=cab;roundedRect(36,-54,105,108,26);ctx.fill();
+      ctx.fillStyle='#080b10';roundedRect(67,-43,58,86,18);ctx.fill();
+      ctx.fillStyle='rgba(188,213,236,.20)';roundedRect(79,-36,35,72,12);ctx.fill();
+      ctx.fillStyle='#c21f33';ctx.fillRect(42,-46,7,92);
+      // wheels
+      ctx.fillStyle='#030405';for(const y of [-61,61]){roundedRect(-104,y-8,46,16,6);ctx.fill();roundedRect(63,y-8,45,16,6);ctx.fill();}
+      // lights
+      ctx.fillStyle='#eef3fa';for(const y of [-35,35]){ctx.beginPath();ctx.arc(133,y,6,0,TAU);ctx.fill();}
+    });
+  }
+
+  function drawCable(){
+    if(stage<2) return;
+    const origin=bedRear();
+    ctx.strokeStyle=hook.attached?'rgba(226,232,240,.90)':'rgba(170,177,187,.72)';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(origin.x,origin.y);
+    const mx=(origin.x+hook.x)/2, sag=35+dist(origin,hook)*.05;
+    ctx.quadraticCurveTo(mx,(origin.y+hook.y)/2+sag,hook.x,hook.y);ctx.stroke();
+    ctx.fillStyle=hook.attached?'#38d39f':'#dce0e6';ctx.beginPath();ctx.arc(hook.x,hook.y,11,0,TAU);ctx.fill();
+    ctx.strokeStyle='#080a0d';ctx.lineWidth=4;ctx.stroke();
+  }
+
+  function drawParkingGuide(){
+    if(stage!==0) return;
+    const p={x:broken.x-270,y:broken.y};
+    ctx.save();ctx.translate(p.x,p.y);ctx.strokeStyle='rgba(226,232,240,.22)';ctx.lineWidth=4;ctx.setLineDash([14,12]);roundedRect(-135,-82,270,164,32);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='rgba(226,232,240,.04)';roundedRect(-135,-82,270,164,32);ctx.fill();ctx.restore();
+  }
+
+  function drawParticles(){
+    for(const p of particles){ctx.globalAlpha=clamp(p.life/.7,0,1)*.24;ctx.fillStyle='#d7dbe0';ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill();}ctx.globalAlpha=1;
+  }
+
+  function render(){
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    const sky=ctx.createLinearGradient(0,0,0,vh);sky.addColorStop(0,'#0c1017');sky.addColorStop(.56,'#07090d');sky.addColorStop(1,'#030405');ctx.fillStyle=sky;ctx.fillRect(0,0,vw,vh);
+    const shakeX=(Math.random()-.5)*camera.shake, shakeY=(Math.random()-.5)*camera.shake;
+    ctx.save();ctx.translate(vw/2+shakeX,vh/2+shakeY);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
+    drawRoad();drawParkingGuide();drawParticles();drawTruck();drawCable();drawCar(broken,true);
+    ctx.restore();
+
+    // subtle horizon light
+    const glow=ctx.createRadialGradient(vw*.5,vh*.48,0,vw*.5,vh*.48,vw*.52);glow.addColorStop(0,'rgba(116,130,150,.055)');glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,vw,vh);
+  }
+
+  function loop(now){
+    const dt=Math.min(.033,(now-last)/1000);last=now;
+    update(dt);render();requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
